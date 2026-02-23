@@ -1,13 +1,27 @@
 import React, { useState } from 'react';
 import Footer from '../Auth/Footer';
+import authService from '../../services/authService';
 
 const ResetPassword = () => {
     const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Handle password reset logic here
-        console.log('Reset password for:', email);
+        setLoading(true);
+        setMessage('');
+        setError('');
+
+        try {
+            const data = await authService.forgotPassword(email);
+            setMessage(data.message || 'If an account exists with this email, a reset link has been sent.');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -48,6 +62,36 @@ const ResetPassword = () => {
                     }}>
                         Enter your registered email address
                     </p>
+
+                    {message && (
+                        <div style={{
+                            padding: '12px',
+                            backgroundColor: '#e7f3ff',
+                            color: '#1c1e21',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            marginBottom: '20px',
+                            border: '1px solid #70b5f9',
+                            textAlign: 'center'
+                        }}>
+                            {message}
+                        </div>
+                    )}
+
+                    {error && (
+                        <div style={{
+                            padding: '12px',
+                            backgroundColor: '#fff0f0',
+                            color: '#c00',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            marginBottom: '20px',
+                            border: '1px solid #ffc0c0',
+                            textAlign: 'center'
+                        }}>
+                            {error}
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit}>
                         <div style={{ marginBottom: '16px' }}>
@@ -92,23 +136,24 @@ const ResetPassword = () => {
 
                         <button
                             type="submit"
+                            disabled={loading}
                             style={{
                                 width: '100%',
                                 padding: '12px',
                                 fontSize: '14px',
                                 fontWeight: '600',
                                 color: '#ffffff',
-                                backgroundColor: '#1f2937',
+                                backgroundColor: loading ? '#6b7280' : '#1f2937',
                                 border: 'none',
                                 borderRadius: '50px',
-                                cursor: 'pointer',
+                                cursor: loading ? 'not-allowed' : 'pointer',
                                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
                                 transition: 'background-color 0.2s'
                             }}
-                            onMouseEnter={(e) => e.target.style.backgroundColor = '#2a3a52'}
-                            onMouseLeave={(e) => e.target.style.backgroundColor = '#1f2937'}
+                            onMouseEnter={(e) => { if (!loading) e.target.style.backgroundColor = '#2a3a52'; }}
+                            onMouseLeave={(e) => { if (!loading) e.target.style.backgroundColor = '#1f2937'; }}
                         >
-                            Submit
+                            {loading ? 'Submitting...' : 'Submit'}
                         </button>
                     </form>
                 </div>

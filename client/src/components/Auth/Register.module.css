@@ -252,3 +252,15 @@ h5 {
     gap: 8px;
   }
 }
+
+.error {
+  border-color: #dc3545 !important;
+}
+
+.error-text {
+  color: #dc3545;
+  font-size: 11px;
+  margin-top: -10px;
+  margin-bottom: 15px;
+  display: block;
+}

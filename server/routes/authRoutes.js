@@ -16,11 +16,11 @@ const { authLimiter, strictAuthLimiter, emailLimiter } = require('../middleware/
 router.post('/register', authLimiter, authController.register);
 
 /**
- * @route   GET /api/auth/verify-email/:token
+ * @route   POST /api/auth/verify-email
  * @desc    Verify email address
  * @access  Public
  */
-router.get('/verify-email/:token', authController.verifyEmail);
+router.post('/verify-email', authController.verifyEmail);
 
 /**
  * @route   POST /api/auth/resend-verification
@@ -43,6 +43,45 @@ router.post('/login', authLimiter, authController.login);
  */
 router.post('/logout', authController.logout);
 
+// ===========================
+// GOOGLE OAUTH ROUTES
+// ===========================
+
+/**
+ * @route   GET /api/auth/google
+ * @desc    Initiate Google OAuth flow
+ * @access  Public
+ */
+const passport = require('passport');
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+/**
+ * @route   GET /api/auth/google/callback
+ * @desc    Google OAuth callback
+ * @access  Public
+ */
+router.get('/google/callback', 
+    passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=oauth_failed` }),
+    authController.googleCallback
+);
+
+/**
+ * @route   GET /api/auth/facebook
+ * @desc    Initiate Facebook OAuth flow
+ * @access  Public
+ */
+router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }));
+
+/**
+ * @route   GET /api/auth/facebook/callback
+ * @desc    Facebook OAuth callback
+ * @access  Public
+ */
+router.get('/facebook/callback', 
+    passport.authenticate('facebook', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=oauth_failed` }),
+    authController.googleCallback
+);
+
 /**
  * @route   POST /api/auth/refresh
  * @desc    Refresh access token
@@ -56,24 +95,10 @@ router.post('/refresh', authController.refreshToken);
 
 /**
  * @route   POST /api/auth/forgot-password
- * @desc    Request password reset (sends OTP)
+ * @desc    Request password reset (sends link)
  * @access  Public
  */
 router.post('/forgot-password', strictAuthLimiter, authController.forgotPassword);
-
-/**
- * @route   POST /api/auth/verify-reset-otp
- * @desc    Verify OTP and get reset link
- * @access  Public
- */
-router.post('/verify-reset-otp', strictAuthLimiter, authController.verifyResetOTP);
-
-/**
- * @route   GET /api/auth/verify-reset-link/:token
- * @desc    Verify reset link token validity
- * @access  Public
- */
-router.get('/verify-reset-link/:token', authController.verifyResetLink);
 
 /**
  * @route   POST /api/auth/reset-password

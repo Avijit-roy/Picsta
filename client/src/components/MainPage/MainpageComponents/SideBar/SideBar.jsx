@@ -1,20 +1,51 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useAuth } from "../../../../context/AuthContext";
+import SearchPanel from './SearchPanel';
+import NotificationsPanel from './NotificationsPanel';
 
-const Sidebar = ({ isDrawerOpen, setIsDrawerOpen }) => {
+const Sidebar = ({ 
+    isDrawerOpen, 
+    setIsDrawerOpen, 
+    onProfileClick, 
+    onHomeClick, 
+    onMessagesClick, 
+    onReelsClick, 
+    onCreateClick, 
+    onLogout, 
+    onUserClick, 
+    onPostClick, 
+    unreadMessages = 0,
+    unreadNotifications = 0
+}) => {
+    const { user } = useAuth();
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+    // When search or notifications are open, force sidebar to icon-only (collapsed) mode
+    // Messages page allows the drawer to expand on hover
+    const isPanelActive = searchOpen || notificationsOpen;
+    const drawerEffective = isPanelActive ? false : isDrawerOpen;
+
     const navItems = [
         { name: 'Home', icon: 'home', filled: true },
         { name: 'Search', icon: 'search' },
-        { name: 'Explore', icon: 'explore' },
         { name: 'Reels', icon: 'reels' },
-        { name: 'Messages', icon: 'messages', badge: 1 },
-        { name: 'Notifications', icon: 'notifications' },
+        { 
+            name: 'Messages', 
+            icon: 'messages', 
+            badge: unreadMessages > 0 ? (unreadMessages > 10 ? '10+' : unreadMessages) : null 
+        },
+        { 
+            name: 'Notifications', 
+            icon: 'notifications', 
+            badge: unreadNotifications > 0 ? (unreadNotifications > 10 ? '10+' : unreadNotifications) : null 
+        },
         { name: 'Create', icon: 'create' },
-        { name: 'Profile', icon: 'profile' }
     ];
 
     const bottomItems = [
         { name: 'Profile', icon: 'profile' },
-        { name: 'More', icon: 'more' }
+        { name: 'Logout', icon: 'logout' }
     ];
 
     // Icon rendering function
@@ -55,7 +86,7 @@ const Sidebar = ({ isDrawerOpen, setIsDrawerOpen }) => {
                 </svg>
             ),
             messages: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-chat-left-text" viewBox="0 0 16 16">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16">
                     <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z" />
                     <path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6m0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5" />
                 </svg>
@@ -71,15 +102,32 @@ const Sidebar = ({ isDrawerOpen, setIsDrawerOpen }) => {
                     <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
             ),
+            logout: (
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+            ),
             profile: (
                 <div style={{
                     width: '26px',
                     height: '26px',
                     borderRadius: '50%',
                     overflow: 'hidden',
-                    border: '2px solid white'
+                    border: '1.5px solid white',
+                    boxSizing: 'border-box',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
                 }}>
-                    <img src="https://i.pravatar.cc/150?img=33" alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img 
+                        src={user?.profilePicture || "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg"} 
+                        alt="Profile" 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                        onError={(e) => { e.target.src = "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg"; }}
+                    />
                 </div>
             ),
             more: (
@@ -95,24 +143,26 @@ const Sidebar = ({ isDrawerOpen, setIsDrawerOpen }) => {
     };
 
     // Reusable Navigation Button Component
-    const NavButton = ({ item, showBadge = false }) => (
+    const NavButton = ({ item, onClick, active = false }) => (
         <button
             className="btn btn-link p-0 position-relative"
+            onClick={onClick}
             style={{
                 color: 'white',
                 display: 'flex',
                 alignItems: 'center',
                 height: '48px',
-                paddingLeft: isDrawerOpen ? '12px' : '23px',
-                paddingRight: isDrawerOpen ? '12px' : '23px',
+                paddingLeft: drawerEffective ? '12px' : '23px',
+                paddingRight: drawerEffective ? '12px' : '23px',
                 textDecoration: 'none',
                 borderRadius: '8px',
                 transition: 'background-color 0.2s, padding 0.3s ease',
-                justifyContent: isDrawerOpen ? 'flex-start' : 'center',
-                width: '100%'
+                justifyContent: drawerEffective ? 'flex-start' : 'center',
+                width: '100%',
+                backgroundColor: active ? '#1a1a1a' : 'transparent',
             }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1a1a1a'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = active ? '#1a1a1a' : 'transparent'}
         >
             <div style={{
                 minWidth: '26px',
@@ -122,20 +172,31 @@ const Sidebar = ({ isDrawerOpen, setIsDrawerOpen }) => {
                 position: 'relative'
             }}>
                 {renderIcon(item.icon, item.filled)}
-                {showBadge && item.badge && (
-                    <span className="badge rounded-pill bg-danger" style={{
-                        fontSize: '9px',
-                        padding: '2px 5px',
+                {item.badge && (
+                    <span style={{
                         position: 'absolute',
-                        top: '-6px',
-                        right: '-8px',
-                        minWidth: '18px'
+                        top: '-8px',
+                        right: '-10px',
+                        backgroundColor: '#ff3b30',
+                        color: 'white',
+                        fontSize: '10px',
+                        fontWeight: '800',
+                        minWidth: '18px',
+                        height: '18px',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 4px',
+                        border: '2px solid #000',
+                        zIndex: 2,
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
                     }}>
                         {item.badge}
                     </span>
                 )}
             </div>
-            {isDrawerOpen && (
+            {drawerEffective && (
                 <span style={{
                     marginLeft: '16px',
                     fontSize: '16px',
@@ -147,74 +208,138 @@ const Sidebar = ({ isDrawerOpen, setIsDrawerOpen }) => {
         </button>
     );
 
+    const handleNavClick = (item) => {
+        if (item.name === 'Search') {
+            setNotificationsOpen(false);
+            setSearchOpen(true);
+        } else if (item.name === 'Notifications') {
+            setSearchOpen(false);
+            setNotificationsOpen(true);
+        } else if (item.name === 'Home') {
+            setSearchOpen(false);
+            setNotificationsOpen(false);
+            onHomeClick?.();
+        } else if (item.name === 'Messages') {
+            setSearchOpen(false);
+            setNotificationsOpen(false);
+            onMessagesClick?.();
+        } else if (item.name === 'Reels') {
+            setSearchOpen(false);
+            setNotificationsOpen(false);
+            onReelsClick?.();
+        } else if (item.name === 'Create') {
+            setSearchOpen(false);
+            setNotificationsOpen(false);
+            onCreateClick?.();
+        }
+    };
+
+    const handleCloseSearch = () => { setSearchOpen(false); };
+    const handleCloseNotifications = () => { setNotificationsOpen(false); };
+
     return (
-        <div
-            className="d-none d-md-flex flex-column align-items-start"
-            onMouseEnter={() => setIsDrawerOpen(true)}
-            onMouseLeave={() => setIsDrawerOpen(false)}
-            style={{
-                width: isDrawerOpen ? '240px' : '72px',
-                backgroundColor: '#000',
-                position: 'fixed',
-                height: '100vh',
-                left: 0,
-                top: 0,
-                paddingTop: '20px',
-                paddingBottom: '20px',
-                paddingLeft: isDrawerOpen ? '12px' : '0',
-                paddingRight: isDrawerOpen ? '12px' : '0',
-                transition: 'width 0.3s ease, padding 0.3s ease',
-                zIndex: 1000,
-                overflow: 'hidden'
-            }}
-        >
-            {/* Logo */}
-            <div style={{
-                marginBottom: '44px',
-                paddingLeft: isDrawerOpen ? '12px' : '23px',
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: isDrawerOpen ? 'flex-start' : 'center',
-                transition: 'padding 0.3s ease'
-            }}>
-                {isDrawerOpen ? (
-                    <div style={{
-                        fontSize: '24px',
-                        fontWeight: 'bold',
-                        color: 'white',
-                        fontFamily: 'cursive'
-                    }}>
-                        Picsta
-                    </div>
-                ) : (
-                    <img
-                        src="/Picsta_bw.png"
-                        alt="Picsta Logo"
-                        style={{
-                            width: '40px',
-                            height: '40px',
-                            objectFit: 'contain',
-                            display: 'block'
-                        }}
+        <>
+            {/* Sidebar Rail */}
+            <div
+                className="d-none d-md-flex flex-column align-items-start"
+                onMouseEnter={() => { if (!isPanelActive) setIsDrawerOpen(true); }}
+                onMouseLeave={() => { if (!isPanelActive) setIsDrawerOpen(false); }}
+                style={{
+                    width: drawerEffective ? '240px' : '72px',
+                    backgroundColor: '#000',
+                    position: 'fixed',
+                    height: '100vh',
+                    left: 0,
+                    top: 0,
+                    paddingTop: '20px',
+                    paddingBottom: '20px',
+                    paddingLeft: drawerEffective ? '12px' : '0',
+                    paddingRight: drawerEffective ? '12px' : '0',
+                    transition: 'width 0.3s ease, padding 0.3s ease',
+                    zIndex: 1600,
+                    overflow: 'hidden',
+                    borderRight: isPanelActive ? '1px solid #262626' : 'none',
+                }}
+            >
+                {/* Logo */}
+                <div style={{
+                    marginBottom: '44px',
+                    paddingLeft: drawerEffective ? '12px' : '5px',
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: drawerEffective ? 'flex-start' : 'center',
+                    transition: 'padding 0.3s ease'
+                }}>
+                    {drawerEffective ? (
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', fontFamily: 'cursive' }}>
+                            Picsta
+                        </div>
+                    ) : (
+                        <img
+                            src="/Picsta_bw.png"
+                            alt="Picsta Logo"
+                            style={{ width: '40px', height: '40px', objectFit: 'contain', display: 'block' }}
+                        />
+                    )}
+                </div>
+
+                {/* Main Navigation */}
+                <nav className="d-flex flex-column mb-auto" style={{ gap: '8px', width: '100%', paddingTop: '5rem' }}>
+                    {navItems.map((item, index) => (
+                        <NavButton
+                            key={index}
+                            item={item}
+                            active={(searchOpen && item.name === 'Search') || (notificationsOpen && item.name === 'Notifications')}
+                            onClick={() => handleNavClick(item)}
+                        />
+                    ))}
+                </nav>
+
+                {/* Bottom Navigation */}
+                <div className="d-flex flex-column position-relative" style={{ gap: '8px', width: '100%' }}>
+                    {bottomItems.map((item, index) => (
+                        <div key={index} className="position-relative">
+                            <NavButton
+                                item={item}
+                                showBadge={false}
+                                onClick={
+                                    item.name === 'Profile'
+                                        ? onProfileClick
+                                        : item.name === 'Logout'
+                                            ? onLogout
+                                            : undefined
+                                }
+                            />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Slide-out panel — Search or Notifications */}
+            <div
+                className="d-none d-md-block"
+                style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: '72px',
+                    height: '100vh',
+                    zIndex: 1700,
+                    width: isPanelActive ? '380px' : '0',
+                    overflow: 'hidden',
+                    transition: 'width 0.3s ease',
+                }}
+            >
+                {searchOpen && <SearchPanel onClose={handleCloseSearch} onUserClick={onUserClick} />}
+                {notificationsOpen && (
+                    <NotificationsPanel 
+                        onClose={handleCloseNotifications} 
+                        onUserClick={onUserClick}
+                        onPostClick={onPostClick}
                     />
                 )}
             </div>
-
-            {/* Main Navigation */}
-            <nav className="d-flex flex-column mb-auto" style={{ gap: '8px', width: '100%', paddingTop: "5rem" }}>
-                {navItems.slice(0, -1).map((item, index) => (
-                    <NavButton key={index} item={item} showBadge={true} />
-                ))}
-            </nav>
-
-            {/* Bottom Navigation */}
-            <div className="d-flex flex-column" style={{ gap: '8px', width: '100%' }}>
-                {bottomItems.map((item, index) => (
-                    <NavButton key={index} item={item} showBadge={false} />
-                ))}
-            </div>
-        </div>
+        </>
     );
 };
 

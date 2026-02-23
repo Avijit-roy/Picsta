@@ -47,37 +47,6 @@ const sendVerificationEmail = async (email, name, token) => {
   await transporter.sendMail(mailOptions);
 };
 
-/**
- * Send OTP for password reset
- * @param {String} email - Recipient email
- * @param {String} name - User name
- * @param {String} otp - 6-digit OTP
- */
-const sendPasswordResetOTP = async (email, name, otp) => {
-  const transporter = createTransporter();
-
-  const mailOptions = {
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: 'Password Reset OTP - Picsta',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Password Reset Request</h2>
-        <p>Hello ${name},</p>
-        <p>We received a request to reset your password. Use the OTP below to verify your identity:</p>
-        <div style="background-color: #f5f5f5; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
-          <h1 style="margin: 0; color: #007bff; letter-spacing: 8px; font-size: 36px;">${otp}</h1>
-        </div>
-        <p style="color: #666;">This OTP will expire in ${process.env.OTP_EXPIRY_MINUTES || 10} minutes.</p>
-        <p style="color: #999; font-size: 12px; margin-top: 24px;">
-          If you didn't request a password reset, please ignore this email and ensure your account is secure.
-        </p>
-      </div>
-    `
-  };
-
-  await transporter.sendMail(mailOptions);
-};
 
 /**
  * Send password reset link after OTP verification
@@ -87,26 +56,26 @@ const sendPasswordResetOTP = async (email, name, otp) => {
  */
 const sendPasswordResetLink = async (email, name, token) => {
   const transporter = createTransporter();
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  const resetUrl = `${process.env.FRONTEND_URL}/new-password?token=${token}`;
 
   const mailOptions = {
     from: process.env.EMAIL_FROM,
     to: email,
-    subject: 'Complete Your Password Reset - Picsta',
+    subject: 'Reset Your Password - Picsta',
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Reset Your Password</h2>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px;">
+        <h2 style="color: #333;">Password Reset Request</h2>
         <p>Hello ${name},</p>
-        <p>Your identity has been verified. Click the button below to create a new password:</p>
-        <a href="${resetUrl}" style="display: inline-block; background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 16px 0;">
-          Reset Password
-        </a>
-        <p>Or copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; color: #666;">${resetUrl}</p>
-        <p style="color: #d9534f; font-weight: bold;">⚠️ This link will expire in ${process.env.RESET_LINK_EXPIRY_MINUTES || 15} minutes.</p>
-        <p style="color: #999; font-size: 12px; margin-top: 24px;">
-          For security reasons, this link can only be used once. If you didn't request this, please contact support immediately.
-        </p>
+        <p>We received a request to reset your password for your Picsta account. Click the button below to set a new password:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="display: inline-block; background-color: #0095f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+            Reset Password
+          </a>
+        </div>
+        <p>This link will expire in ${process.env.RESET_LINK_EXPIRY_MINUTES || 15} minutes. If you did not request this, please ignore this email.</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 12px; color: #999;">If you're having trouble clicking the button, copy and paste this URL into your browser:</p>
+        <p style="word-break: break-all; font-size: 12px; color: #0095f6;">${resetUrl}</p>
       </div>
     `
   };
@@ -147,7 +116,6 @@ const sendPasswordChangeConfirmation = async (email, name) => {
 
 module.exports = {
   sendVerificationEmail,
-  sendPasswordResetOTP,
   sendPasswordResetLink,
   sendPasswordChangeConfirmation
 };

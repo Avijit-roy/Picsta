@@ -5,14 +5,12 @@ const {
   generateRefreshToken,
   generateSecureToken,
   hashToken,
-  generateOTP,
   setAuthCookies,
   clearAuthCookies,
   verifyToken  // ADD THIS HERE
 } = require('../utils/generateToken');
 const {
   sendVerificationEmail,
-  sendPasswordResetOTP,
   sendPasswordResetLink,
   sendPasswordChangeConfirmation
 } = require('../utils/sendEmail');
@@ -51,6 +49,40 @@ exports.register = async (req, res) => {
       });
     }
 
+    // Unified length and character checks
+    const unifiedRegex = /^(?![_])(?!.*__)(?![a-z0-9_]*_$)[a-z0-9_]{4,20}$/;
+    const reserved = ['admin', 'support', 'picsta', 'official', 'moderator', 'staff'];
+
+    // Trim and normalize
+    const normalizedName = name.trim().toLowerCase();
+    let normalizedUsername = username.trim().toLowerCase();
+    if (!normalizedUsername.startsWith('@')) {
+      normalizedUsername = '@' + normalizedUsername;
+    }
+
+    // Validate Name
+    if (!unifiedRegex.test(normalizedName) || !/[a-z]/.test(normalizedName)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name must be 4-20 chars long, contain only lowercase letters/numbers/underscores, at least one letter, and no consecutive underscores.'
+      });
+    }
+    if (reserved.includes(normalizedName)) {
+      return res.status(400).json({ success: false, message: 'This name is reserved' });
+    }
+
+    // Validate Username
+    const usernamePart = normalizedUsername.substring(1);
+    if (!unifiedRegex.test(usernamePart) || !/[a-z]/.test(usernamePart)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username must be 4-20 chars long (after @), contain only lowercase letters/numbers/underscores, at least one letter, and no consecutive underscores.'
+      });
+    }
+    if (reserved.includes(usernamePart)) {
+      return res.status(400).json({ success: false, message: 'This username is reserved' });
+    }
+
     const birthDate = new Date(dob);
     const age = Math.floor((Date.now() - birthDate) / (365.25 * 24 * 60 * 60 * 1000));
     if (age < 13) {
@@ -61,7 +93,7 @@ exports.register = async (req, res) => {
     }
 
     const existingUser = await User.findOne({
-      $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }]
+      $or: [{ email: email.toLowerCase() }, { username: normalizedUsername }]
     });
 
     if (existingUser) {
@@ -76,13 +108,13 @@ exports.register = async (req, res) => {
     const hashedVerificationToken = hashToken(verificationToken);
 
     const user = await User.create({
-      name,
-      username: username.toLowerCase(),
+      name: normalizedName,
+      username: normalizedUsername,
       email: email.toLowerCase(),
       passwordHash,
       dob: birthDate,
       emailVerificationToken: hashedVerificationToken,
-      emailVerificationExpires: Date.now() + 24 * 60 * 60 * 1000
+      emailVerificationExpires: Date.now() + (parseInt(process.env.EMAIL_VERIFY_TOKEN_EXPIRY_MINUTES) || 15) * 60 * 1000
     });
 
     try {
@@ -91,11 +123,11 @@ exports.register = async (req, res) => {
       console.error('Failed to send verification email:', emailError);
     }
 
+    // Do NOT auto-login — user must verify email first
     res.status(201).json({
       success: true,
-      message: 'Registration successful. Please check your email to verify your account.',
+      message: 'Account created! Check your inbox to verify your email.',
       data: {
-        userId: user._id,
         email: user.email
       }
     });
@@ -114,7 +146,7 @@ exports.register = async (req, res) => {
 
 exports.verifyEmail = async (req, res) => {
   try {
-    const { token } = req.params;
+    const { token } = req.body;
 
     if (!token) {
       return res.status(400).json({
@@ -123,25 +155,59 @@ exports.verifyEmail = async (req, res) => {
       });
     }
 
+    // Hash and find the user by verification token
     const hashedToken = hashToken(token);
     const user = await User.findOne({
       emailVerificationToken: hashedToken,
       emailVerificationExpires: { $gt: Date.now() }
     });
 
+    // Check if token is valid but user already verified (expired or used)
     if (!user) {
+      // Check if someone tried an already-used token
+      const alreadyVerifiedUser = await User.findOne({
+        isVerified: true,
+        emailVerificationToken: undefined
+      });
+
       return res.status(400).json({
         success: false,
-        message: 'Invalid or expired verification token'
+        code: 'TOKEN_INVALID_OR_EXPIRED',
+        message: 'This verification link has expired or already been used. Please request a new one.'
       });
     }
 
+    if (user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        code: 'ALREADY_VERIFIED',
+        message: 'Your email is already verified. You can log in.'
+      });
+    }
+
+    // Mark as verified and clear token fields
     user.isVerified = true;
     await user.clearEmailVerificationFields();
 
+    // Auto-login: issue tokens now that email is confirmed
+    const tokenPayload = { userId: user._id, tokenVersion: user.tokenVersion };
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
+    setAuthCookies(res, accessToken, refreshToken);
+
     res.status(200).json({
       success: true,
-      message: 'Email verified successfully. You can now log in.'
+      message: 'Email verified! Welcome to Picsta.',
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          username: user.username,
+          email: user.email,
+          profilePicture: user.profilePicture,
+          isVerified: true
+        }
+      }
     });
   } catch (error) {
     console.error('Email verification error:', error);
@@ -230,10 +296,13 @@ exports.login = async (req, res) => {
       });
     }
 
+    /* isVerified check — active */
     if (!user.isVerified) {
       return res.status(403).json({
         success: false,
-        message: 'Please verify your email address before logging in'
+        code: 'EMAIL_NOT_VERIFIED',
+        email: user.email,
+        message: 'Please verify your email before logging in. Check your inbox or resend the verification email.'
       });
     }
 
@@ -265,6 +334,7 @@ exports.login = async (req, res) => {
           name: user.name,
           username: user.username,
           email: user.email,
+          profilePicture: user.profilePicture,
           isVerified: user.isVerified
         }
       }
@@ -275,6 +345,36 @@ exports.login = async (req, res) => {
       success: false,
       message: 'Login failed. Please try again.'
     });
+  }
+};
+
+// ===========================
+// GOOGLE CALLBACK
+// ===========================
+
+exports.googleCallback = async (req, res) => {
+  try {
+    const user = req.user;
+    
+    if (!user) {
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+    }
+
+    const tokenPayload = {
+      userId: user._id,
+      tokenVersion: user.tokenVersion
+    };
+
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
+
+    setAuthCookies(res, accessToken, refreshToken);
+
+    // Redirect to frontend main page
+    res.redirect(`${process.env.FRONTEND_URL}/main`);
+  } catch (error) {
+    console.error('Google callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/login?error=server_error`);
   }
 };
 
@@ -355,7 +455,17 @@ exports.refreshToken = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Token refreshed successfully'
+      message: 'Token refreshed successfully',
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          username: user.username,
+          email: user.email,
+          profilePicture: user.profilePicture,
+          isVerified: user.isVerified
+        }
+      }
     });
   } catch (error) {
     console.error('Refresh token error:', error);
@@ -367,7 +477,7 @@ exports.refreshToken = async (req, res) => {
 };
 
 // ===========================
-// PASSWORD RESET - PHASE 1
+// PASSWORD RESET - LINK-BASED
 // ===========================
 
 exports.forgotPassword = async (req, res) => {
@@ -383,180 +493,38 @@ exports.forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ email: email.toLowerCase() });
 
+    // Always return success to prevent email enumeration
     if (!user) {
       return res.status(200).json({
         success: true,
-        message: 'If an account exists, an OTP has been sent to your email'
+        message: 'If an account exists with this email, a reset link has been sent.'
       });
     }
 
-    const otp = generateOTP();
-    const hashedOtp = hashToken(otp);
+    const resetToken = generateSecureToken();
+    const hashedResetToken = hashToken(resetToken);
 
-    user.passwordResetOtpHash = hashedOtp;
-    user.passwordResetOtpExpires = Date.now() + (parseInt(process.env.OTP_EXPIRY_MINUTES) || 10) * 60 * 1000;
-    user.passwordResetAttempts = 0;
-    user.passwordResetVerified = false;
-    user.passwordResetLinkToken = undefined;
-    user.passwordResetLinkExpires = undefined;
+    user.resetPasswordToken = hashedResetToken;
+    user.resetPasswordExpires = Date.now() + (parseInt(process.env.RESET_LINK_EXPIRY_MINUTES) || 15) * 60 * 1000;
 
     await user.save();
 
     try {
-      await sendPasswordResetOTP(user.email, user.name, otp);
+      await sendPasswordResetLink(user.email, user.name, resetToken);
     } catch (emailError) {
-      console.error('Failed to send OTP email:', emailError);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to send OTP. Please try again.'
-      });
+      console.error('Failed to send reset link email:', emailError);
+      // We still return success to the user, but log the error
     }
 
     res.status(200).json({
       success: true,
-      message: 'OTP sent to your email. Please check your inbox.',
-      data: {
-        email: user.email
-      }
+      message: 'If an account exists with this email, a reset link has been sent.'
     });
   } catch (error) {
     console.error('Forgot password error:', error);
     res.status(500).json({
       success: false,
       message: 'Password reset request failed. Please try again.'
-    });
-  }
-};
-
-// ===========================
-// PASSWORD RESET - PHASE 2
-// ===========================
-
-exports.verifyResetOTP = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-
-    if (!email || !otp) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and OTP are required'
-      });
-    }
-
-    const user = await User.findOne({ email: email.toLowerCase() });
-
-    if (!user || !user.passwordResetOtpHash || !user.passwordResetOtpExpires) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired OTP'
-      });
-    }
-
-    if (Date.now() > user.passwordResetOtpExpires) {
-      await user.clearPasswordResetFields();
-      return res.status(400).json({
-        success: false,
-        message: 'OTP has expired. Please request a new one.'
-      });
-    }
-
-    if (user.passwordResetAttempts >= 3) {
-      await user.clearPasswordResetFields();
-      return res.status(429).json({
-        success: false,
-        message: 'Too many attempts. Please request a new OTP.'
-      });
-    }
-
-    const hashedOtp = hashToken(otp);
-
-    if (hashedOtp !== user.passwordResetOtpHash) {
-      user.passwordResetAttempts += 1;
-      await user.save();
-
-      return res.status(400).json({
-        success: false,
-        message: `Invalid OTP. ${3 - user.passwordResetAttempts} attempts remaining.`
-      });
-    }
-
-    const resetLinkToken = generateSecureToken();
-    const hashedResetLinkToken = hashToken(resetLinkToken);
-
-    user.passwordResetVerified = true;
-    user.passwordResetLinkToken = hashedResetLinkToken;
-    user.passwordResetLinkExpires = Date.now() + (parseInt(process.env.RESET_LINK_EXPIRY_MINUTES) || 15) * 60 * 1000;
-    user.passwordResetOtpHash = undefined;
-    user.passwordResetOtpExpires = undefined;
-    user.passwordResetAttempts = 0;
-
-    await user.save();
-
-    try {
-      await sendPasswordResetLink(user.email, user.name, resetLinkToken);
-    } catch (emailError) {
-      console.error('Failed to send reset link email:', emailError);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to send reset link. Please try again.'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'OTP verified! Password reset link sent to your email.'
-    });
-  } catch (error) {
-    console.error('OTP verification error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'OTP verification failed. Please try again.'
-    });
-  }
-};
-
-// ===========================
-// PASSWORD RESET - PHASE 3
-// ===========================
-
-exports.verifyResetLink = async (req, res) => {
-  try {
-    const { token } = req.params;
-
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: 'Reset token is required'
-      });
-    }
-
-    const hashedToken = hashToken(token);
-
-    const user = await User.findOne({
-      passwordResetLinkToken: hashedToken,
-      passwordResetLinkExpires: { $gt: Date.now() },
-      passwordResetVerified: true
-    });
-
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired reset link'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Reset link is valid',
-      data: {
-        email: user.email
-      }
-    });
-  } catch (error) {
-    console.error('Reset link verification error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Link verification failed'
     });
   }
 };
@@ -598,15 +566,14 @@ exports.resetPassword = async (req, res) => {
     const hashedToken = hashToken(token);
 
     const user = await User.findOne({
-      passwordResetLinkToken: hashedToken,
-      passwordResetLinkExpires: { $gt: Date.now() },
-      passwordResetVerified: true
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() }
     });
 
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid or expired reset link'
+        message: 'Invalid or expired reset token'
       });
     }
 
@@ -731,6 +698,7 @@ exports.getCurrentUser = async (req, res) => {
           name: req.user.name,
           username: req.user.username,
           email: req.user.email,
+          profilePicture: req.user.profilePicture,
           dob: req.user.dob,
           isVerified: req.user.isVerified,
           createdAt: req.user.createdAt

@@ -1,6 +1,8 @@
 import React from 'react';
+import { useAuth } from '../../../../context/AuthContext';
 
-const MobileBottomNavigation = () => {
+const MobileBottomNavigation = ({ onProfileClick, onHomeClick, onSearchClick, onMessagesClick, onReelsClick, unreadMessages = 0 }) => {
+    const { user } = useAuth();
     const renderIcon = (iconName, filled = false) => {
         switch (iconName) {
             case 'home':
@@ -34,6 +36,12 @@ const MobileBottomNavigation = () => {
                         <line x1="17" y1="7" x2="22" y2="7" />
                     </svg>
                 );
+            case 'messages':
+                return (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                );
             case 'profile':
                 return (
                     <div style={{
@@ -41,9 +49,19 @@ const MobileBottomNavigation = () => {
                         height: '26px',
                         borderRadius: '50%',
                         overflow: 'hidden',
-                        border: '2px solid white'
+                        border: '1.5px solid white',
+                        boxSizing: 'border-box',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
                     }}>
-                        <img src="https://i.pravatar.cc/150?img=33" alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img 
+                            src={user?.profilePicture || "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg"} 
+                            alt="Profile" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                            onError={(e) => { e.target.src = "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg"; }}
+                        />
                     </div>
                 );
             default:
@@ -54,39 +72,43 @@ const MobileBottomNavigation = () => {
     return (
         <div
             className="d-md-none position-fixed bottom-0 w-100 d-flex justify-content-around align-items-center"
-            style={{
-                backgroundColor: '#000',
-                borderTop: '1px solid #262626',
-                height: '50px',
-                zIndex: 1000,
-                left: 0
-            }}
+            style={{ backgroundColor: '#000', borderTop: '1px solid #262626', height: '50px', zIndex: 1400, left: 0 }}
         >
-            <button className="btn btn-link p-0" style={{ color: 'white' }}>
+            <button className="btn btn-link p-0" style={{ color: 'white' }} onClick={onHomeClick}>
                 {renderIcon('home', true)}
             </button>
-            <button className="btn btn-link p-0" style={{ color: 'white' }}>
+            <button className="btn btn-link p-0" style={{ color: 'white' }} onClick={onSearchClick}>
                 {renderIcon('search')}
             </button>
-            <button className="btn btn-link p-0" style={{ color: 'white' }}>
+            <button className="btn btn-link p-0" style={{ color: 'white' }} onClick={onReelsClick}>
                 {renderIcon('reels')}
             </button>
-            <button className="btn btn-link p-0 position-relative" style={{ color: 'white' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" className="bi bi-chat-left-text" viewBox="0 0 16 16">
-                    <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z" />
-                    <path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6m0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5" />
-                </svg>
-                <span className="position-absolute badge rounded-pill bg-danger" style={{
-                    fontSize: '9px',
-                    padding: '2px 5px',
-                    top: '-2px',
-                    right: '-5px',
-                    minWidth: '18px'
-                }}>
-                    1
-                </span>
+            <button className="btn btn-link p-0 position-relative" style={{ color: 'white' }} onClick={onMessagesClick}>
+                {renderIcon('messages')}
+                {unreadMessages > 0 && (
+                    <span style={{
+                        position: 'absolute',
+                        top: '-5px',
+                        right: '-5px',
+                        backgroundColor: '#ff3b30',
+                        color: 'white',
+                        fontSize: '9px',
+                        fontWeight: 'bold',
+                        minWidth: '16px',
+                        height: '16px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 3px',
+                        border: '1.5px solid #000',
+                        zIndex: 2
+                    }}>
+                        {unreadMessages > 10 ? '10+' : unreadMessages}
+                    </span>
+                )}
             </button>
-            <button className="btn btn-link p-0" style={{ color: 'white' }}>
+            <button className="btn btn-link p-0" style={{ color: 'white' }} onClick={onProfileClick}>
                 {renderIcon('profile')}
             </button>
         </div>

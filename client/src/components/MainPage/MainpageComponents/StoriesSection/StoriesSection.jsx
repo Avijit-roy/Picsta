@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
+import { useAuth } from '../../../../context/AuthContext';
 
 const StoriesSection = ({ stories }) => {
+    const { user } = useAuth();
     const [visibleStartIndex, setVisibleStartIndex] = useState(0);
     const containerRef = useRef(null);
     const storiesPerView = 6;
@@ -95,9 +97,10 @@ const StoriesSection = ({ stories }) => {
                             backgroundColor: '#1a1a1a'
                         }}>
                             <img
-                                src={story.avatar}
+                                src={story.isYourStory ? (user?.profilePicture || story.avatar) : story.avatar}
                                 alt={story.username}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => { if (story.isYourStory) e.target.src = "https://i.pravatar.cc/150?img=33"; }}
                             />
                         </div>
                         {/* Plus Button */}

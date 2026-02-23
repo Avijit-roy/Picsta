@@ -45,13 +45,6 @@ const hashToken = (token) => {
   return crypto.createHash('sha256').update(token).digest('hex');
 };
 
-/**
- * Generate 6-digit OTP
- * @returns {String} 6-digit OTP
- */
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
 
 /**
  * Verify JWT token
@@ -108,7 +101,6 @@ module.exports = {
   generateRefreshToken,
   generateSecureToken,
   hashToken,
-  generateOTP,
   verifyToken,
   setAuthCookies,
   clearAuthCookies

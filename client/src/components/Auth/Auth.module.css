@@ -1,0 +1,13 @@
+.authContainer {
+  min-height: 100vh;
+  background-color: #000;
+  display: flex;
+  flex-direction: column;
+}
+
+.authCard {
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+}
+
+/* Add any other common styles if needed */

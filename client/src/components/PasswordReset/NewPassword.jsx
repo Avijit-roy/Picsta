@@ -1,26 +1,47 @@
 import React, { useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import authService from '../../services/authService';
 
 const NewPassword = () => {
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const token = searchParams.get('token');
+
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [message, setMessage] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        setMessage('');
 
         if (password !== confirmPassword) {
-            alert('Passwords do not match!');
+            setError('Passwords do not match!');
             return;
         }
 
-        if (password.length < 6) {
-            alert('Password must be at least 6 characters long!');
+        if (!token) {
+            setError('Invalid or missing reset token. Please request a new link.');
             return;
         }
 
-        console.log('New password submitted:', password);
-        // Handle password reset logic here
+        setLoading(true);
+        try {
+            const data = await authService.resetPassword(token, password);
+            setMessage(data.message || 'Password updated successfully. Redirecting to login...');
+            setTimeout(() => {
+                navigate('/login');
+            }, 3000);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to reset password. Link might be expired.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -60,6 +81,36 @@ const NewPassword = () => {
                 }}>
                     Enter the new password below
                 </p>
+
+                {message && (
+                    <div style={{
+                        padding: '12px',
+                        backgroundColor: '#e7f3ff',
+                        color: '#1c1e21',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        marginBottom: '20px',
+                        border: '1px solid #70b5f9',
+                        textAlign: 'center'
+                    }}>
+                        {message}
+                    </div>
+                )}
+
+                {error && (
+                    <div style={{
+                        padding: '12px',
+                        backgroundColor: '#fff0f0',
+                        color: '#c00',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        marginBottom: '20px',
+                        border: '1px solid #ffc0c0',
+                        textAlign: 'center'
+                    }}>
+                        {error}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit}>
                     {/* Password Input */}
@@ -210,23 +261,24 @@ const NewPassword = () => {
 
                     <button
                         type="submit"
+                        disabled={loading}
                         style={{
                             width: '100%',
                             padding: '12px',
                             fontSize: '14px',
                             fontWeight: '600',
                             color: '#ffffff',
-                            backgroundColor: '#1f2937',
+                            backgroundColor: loading ? '#6b7280' : '#1f2937',
                             border: 'none',
                             borderRadius: '50px',
-                            cursor: 'pointer',
+                            cursor: loading ? 'not-allowed' : 'pointer',
                             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
                             transition: 'all 0.2s'
                         }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#374151'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = '#1f2937'}
+                        onMouseEnter={(e) => { if (!loading) e.target.style.backgroundColor = '#374151'; }}
+                        onMouseLeave={(e) => { if (!loading) e.target.style.backgroundColor = '#1f2937'; }}
                     >
-                        Submit
+                        {loading ? 'Reseting...' : 'Submit'}
                     </button>
                 </form>
             </div>
