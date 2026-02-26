@@ -14,6 +14,7 @@ import ReelsViewer from './MainpageComponents/ReelsSection/Reels';
 import CreatePost from './MainpageComponents/CreatePost/CreatePost';
 import PostItem from './MainpageComponents/PostFeed/PostItem';
 import CustomAlert from './MainpageComponents/PostFeed/CustomAlert';
+import PostSkeleton from './MainpageComponents/PostFeed/PostSkeleton';
 import LogoutConfirmModal from './MainpageComponents/SideBar/LogoutConfirmModal';
 import chatService from '../../services/chatService';
 import notificationService from '../../services/notificationService';
@@ -35,6 +36,8 @@ const MainPage = () => {
     const [selectedChat, setSelectedChat] = useState(null);
     const [unreadMessages, setUnreadMessages] = useState(0);
     const [unreadNotifications, setUnreadNotifications] = useState(0);
+    const [navigationStack, setNavigationStack] = useState([]);
+
 
     const goHome = () => { 
         setShowProfile(false); 
@@ -45,9 +48,42 @@ const MainPage = () => {
         setViewingUser(null);
         setSelectedChat(null);
         setSelectedPost(null);
+        setNavigationStack([]); // Clear history when going home
     };
 
+    const handleBack = () => {
+        if (navigationStack.length === 0) {
+            goHome();
+            return;
+        }
+
+        const lastState = navigationStack[navigationStack.length - 1];
+        setNavigationStack(prev => prev.slice(0, -1));
+
+        setShowProfile(lastState.showProfile);
+        setViewingUser(lastState.viewingUser);
+        setShowMessages(lastState.showMessages);
+        setShowReels(lastState.showReels);
+        setShowCreate(lastState.showCreate);
+        setMobilePanelOpen(lastState.mobilePanelOpen);
+        setSelectedChat(lastState.selectedChat);
+        setSelectedPost(lastState.selectedPost);
+    };
+
+
     const handleUserClick = (username) => {
+        // Save current state before navigating
+        setNavigationStack(prev => [...prev, {
+            showProfile,
+            viewingUser,
+            showMessages,
+            showReels,
+            showCreate,
+            mobilePanelOpen,
+            selectedChat,
+            selectedPost
+        }]);
+
         setViewingUser(username);
         setShowProfile(true);
         setShowMessages(false);
@@ -56,6 +92,7 @@ const MainPage = () => {
         setMobilePanelOpen(null);
         setSelectedPost(null);
     };
+
 
     // Fetch unread counts
     useEffect(() => {
@@ -270,11 +307,13 @@ const MainPage = () => {
                 {showProfile ? (
                     <ProfilePage 
                         onLogout={() => setIsLogoutConfirmOpen(true)} 
-                        onBack={goHome} 
+                        onBack={handleBack} 
                         viewingUsername={viewingUser}
+
                         onUpdatePost={handleUpdatePost}
                         onDeletePost={handleDeletePost}
                         onLikeToggle={handleLikeToggle}
+                        onUserClick={handleUserClick}
                         onMessagesClick={(chat) => { 
                             setSelectedChat(chat);
                             setShowMessages(true); 
@@ -290,9 +329,9 @@ const MainPage = () => {
 
                         {/* Post Feed Component */}
                         {loadingPosts ? (
-                            <div className="text-center py-5">
-                                <div className="spinner-border text-light" role="status">
-                                    <span className="visually-hidden">Loading posts...</span>
+                            <div className="d-flex justify-content-center py-4">
+                                <div style={{ maxWidth: '470px', width: '100%', padding: '0 10px' }}>
+                                    {[1, 2, 3].map(i => <PostSkeleton key={i} />)}
                                 </div>
                             </div>
                         ) : realPosts.length > 0 ? (

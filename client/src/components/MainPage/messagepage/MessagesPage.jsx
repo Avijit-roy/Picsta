@@ -46,8 +46,31 @@ const MessagesPage = ({ onBack, initialChat, onUserClick, onPostClick }) => {
 
         socketService.onNewMessage((message) => {
             setMessages((prev) => {
-                const messageExists = prev.find(m => m._id === message._id);
-                if (messageExists || message.chat !== selected) return prev;
+                // 1. Prevent Duplication: Check if message ID already exists
+                if (prev.find(m => m._id === message._id)) return prev;
+
+                // 2. Ignore messages meant for other chat rooms
+                if (message.chat !== selected) return prev;
+
+                // 3. Optimistic Deduplication: Replace temp/uploading message with the real one
+                const currentUserId = user?.id || user?._id;
+                const senderId = message.sender?._id || message.sender;
+                const isMe = senderId?.toString() === currentUserId?.toString();
+
+                if (isMe) {
+                    // Look for a pending message of the same type that was sent recently
+                    const tempIndex = prev.findIndex(m => 
+                        (m.isUploading || m._id?.toString().startsWith('temp')) && 
+                        (m.messageType === message.messageType || m.type === message.type)
+                    );
+
+                    if (tempIndex !== -1) {
+                        const updated = [...prev];
+                        updated[tempIndex] = message;
+                        return updated;
+                    }
+                }
+
                 return [...prev, message];
             });
 
@@ -64,7 +87,7 @@ const MessagesPage = ({ onBack, initialChat, onUserClick, onPostClick }) => {
         return () => {
             socketService.disconnect();
         };
-    }, [selected]);
+    }, [selected, user?.id, user?._id]);
 
     useEffect(() => {
         if (selected) {
@@ -95,6 +118,75 @@ const MessagesPage = ({ onBack, initialChat, onUserClick, onPostClick }) => {
             console.error('Failed to send message:', error);
         }
     };
+
+    const handleSendImage = async (file) => {
+        if (!file || !selected) return;
+
+        // File size up to 10MB (matches backend uploadChatMedia limit)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File size exceeds 10MB limit.');
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+        }
+
+        // 1. Image Upload Flow: Create temporary message object and preview URL
+        const previewUrl = URL.createObjectURL(file);
+        const tempId = `temp-${Date.now()}`;
+        
+        const optimisticMessage = {
+            _id: tempId,
+            sender: { _id: user?.id || user?._id, ...user },
+            chat: selected,
+            content: '',
+            mediaUrl: previewUrl,      // use mediaUrl (unified schema)
+            type: 'image',             // use type (unified schema)
+            isUploading: true,
+            createdAt: new Date().toISOString()
+        };
+
+        // Add to UI instantly (Optimistic UI)
+        setMessages((prev) => [...prev, optimisticMessage]);
+
+        try {
+            const formData = new FormData();
+            formData.append('media', file);
+            
+            // 5. Optimization: Backend already handles Cloudinary, here we just upload
+            const uploadResult = await messageService.uploadImage(formData);
+            
+            if (uploadResult.success) {
+                // Save message to MongoDB
+                const saveResult = await messageService.sendMessage(selected, '', 'image', null, uploadResult.mediaUrl);
+                
+                if (saveResult.success) {
+                    // Replace temporary message with final server data (fallback in case socket missed/delayed)
+                    setMessages((prev) => 
+                        prev.map((m) => (m._id === tempId || (m.isUploading && m.image === previewUrl)) ? { ...saveResult.data, isUploading: false } : m)
+                    );
+                } else {
+                    throw new Error('Failed to save message');
+                }
+            } else {
+                throw new Error('Upload failed');
+            }
+        } catch (error) {
+            console.error('Failed to send image:', error);
+            // Mark as failed instead of removing, so user can retry or see error
+            setMessages((prev) => 
+                prev.map((m) => m._id === tempId ? { ...m, isUploading: false, isFailed: true } : m)
+            );
+        } finally {
+            // Revoke object URL after a while or immediately if needed
+            // Actually, we keep it until the image state updates with the Cloudinary URL
+            setTimeout(() => URL.revokeObjectURL(previewUrl), 10000); 
+        }
+    };
+
+
 
     const selectedChatData = conversations.find(c => c._id === selected);
     const otherParticipant = selectedChatData && !selectedChatData.isGroup 
@@ -181,9 +273,11 @@ const MessagesPage = ({ onBack, initialChat, onUserClick, onPostClick }) => {
                     newMessage={newMessage}
                     setNewMessage={setNewMessage}
                     handleSendMessage={handleSendMessage}
+                    handleSendImage={handleSendImage}
                     messagesEndRef={messagesEndRef}
                     user={user}
                 />
+
             ) : (
                 <ChatEmptyState />
             )}

@@ -1,21 +1,25 @@
 import React, { useState, useRef } from 'react';
 import ImageCropper from '../ProfileSection/ImageCropper';
 import postService from '../../../../services/postService';
-import { useAuth } from '../../../../context/AuthContext';
 
 const CreatePost = ({ onBack, onPost }) => {
-    const { user } = useAuth();
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState(null);
     const [caption, setCaption] = useState('');
     const [isCropping, setIsCropping] = useState(false);
     const [tempImage, setTempImage] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [duration, setDuration] = useState(null);
+    const [fileType, setFileType] = useState(null);
     const fileInputRef = useRef(null);
 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         if (selectedFile) {
+            // Reset states
+            setDuration(null);
+            setFileType(selectedFile.type.startsWith('image/') ? 'image' : 'video');
+
             if (selectedFile.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onload = () => {
@@ -23,9 +27,31 @@ const CreatePost = ({ onBack, onPost }) => {
                     setIsCropping(true);
                 };
                 reader.readAsDataURL(selectedFile);
-            } else {
-                setFile(selectedFile);
-                setPreview(URL.createObjectURL(selectedFile));
+            } else if (selectedFile.type.startsWith('video/')) {
+                // Check file size (20MB)
+                if (selectedFile.size > 20 * 1024 * 1024) {
+                    alert('Video file size exceeds 20MB limit.');
+                    return;
+                }
+
+                // Get video duration
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                video.onloadedmetadata = () => {
+                    window.URL.revokeObjectURL(video.src);
+                    const dur = video.duration;
+                    if (dur < 3 || dur > 30) {
+                        alert('Video duration must be between 3 and 30 seconds.');
+                        setFile(null);
+                        setPreview(null);
+                        setFileType(null);
+                    } else {
+                        setDuration(dur);
+                        setFile(selectedFile);
+                        setPreview(URL.createObjectURL(selectedFile));
+                    }
+                };
+                video.src = URL.createObjectURL(selectedFile);
             }
         }
     };
@@ -47,6 +73,9 @@ const CreatePost = ({ onBack, onPost }) => {
             formData.append('media', file);
             formData.append('caption', caption);
             formData.append('visibility', 'public');
+            if (fileType === 'video' && duration) {
+                formData.append('duration', duration);
+            }
 
             const result = await postService.createPost(formData);
             
@@ -154,7 +183,33 @@ const CreatePost = ({ onBack, onPost }) => {
 
             <div className="upload-area" onClick={() => fileInputRef.current.click()}>
                 {preview ? (
-                    <img src={preview} alt="preview" className="preview-img" />
+                    fileType === 'video' ? (
+                        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                            <video 
+                                src={preview} 
+                                className="preview-img" 
+                                muted 
+                                loop 
+                                playsInline 
+                                autoPlay
+                                style={{ backgroundColor: '#000' }}
+                            />
+                            <div style={{
+                                position: 'absolute',
+                                bottom: '12px',
+                                right: '12px',
+                                background: 'rgba(0,0,0,0.6)',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                color: 'white'
+                            }}>
+                                Video • {Math.round(duration)}s
+                            </div>
+                        </div>
+                    ) : (
+                        <img src={preview} alt="preview" className="preview-img" />
+                    )
                 ) : (
                     <>
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
@@ -169,7 +224,7 @@ const CreatePost = ({ onBack, onPost }) => {
                     type="file" 
                     ref={fileInputRef} 
                     style={{ display: 'none' }} 
-                    accept="image/*,video/*" 
+                    accept="image/*,video/mp4,video/webm" 
                     onChange={handleFileChange} 
                 />
             </div>

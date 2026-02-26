@@ -55,8 +55,24 @@ app.use('/api', (req, res, next) => {
 // SECURITY MIDDLEWARE
 // ===========================
 
-// Helmet: Set security headers
-app.use(helmet());
+// Helmet: Set security headers with relaxed CSP for images
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "http://localhost:5000", "https://i.pravatar.cc", "https://static.vecteezy.com", "https://images.unsplash.com"],
+      connectSrc: ["'self'", "ws://localhost:5173", "http://localhost:5000"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'", "https://res.cloudinary.com"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
 
 // CORS: Configure allowed origins
 app.use(cors({

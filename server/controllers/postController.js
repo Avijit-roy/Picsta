@@ -11,7 +11,7 @@ const { cloudinary } = require('../middleware/uploadMiddleware');
  */
 exports.createPost = async (req, res, next) => {
   try {
-    const { caption, location, visibility } = req.body;
+    const { caption, location, visibility, duration } = req.body;
     const authorId = req.user.id;
 
     if (!req.file) {
@@ -21,11 +21,41 @@ exports.createPost = async (req, res, next) => {
       });
     }
 
+    const isVideo = req.file.mimetype.startsWith('video');
+    
+    // Server-side validation for video duration if provided
+    if (isVideo && duration) {
+      const videoDuration = parseFloat(duration);
+      if (videoDuration < 3 || videoDuration > 30) {
+        // We should delete the file from Cloudinary if it's invalid
+        if (req.file.filename) {
+          await cloudinary.uploader.destroy(req.file.filename, { resource_type: 'video' });
+        }
+        return res.status(400).json({
+          success: false,
+          message: 'Video duration must be between 3 and 30 seconds'
+        });
+      }
+    }
+
     // Media from Cloudinary (via uploadMiddleware)
+    // For videos, Cloudinary provides a thumbnail URL if we use the right transformation
+    let thumbnailUrl = null;
+    if (isVideo) {
+      // Generate a thumbnail URL from the video URL
+      // Cloudinary allows getting a frame by changing extension to jpg or using transformations
+      // Format: .../video/upload/so_0/v123/public_id.jpg
+      thumbnailUrl = req.file.path.replace(/\/video\/upload\/(?:v\d+\/)?(.+?)\.(.+)$/, (match, p1, p2) => {
+        return `/video/upload/so_0/${p1}.jpg`;
+      });
+    }
+
     const media = [
       {
         url: req.file.path,
-        type: req.file.mimetype.startsWith('video') ? 'video' : 'image'
+        type: isVideo ? 'video' : 'image',
+        thumbnailUrl: isVideo ? thumbnailUrl : null,
+        duration: isVideo ? parseFloat(duration) : null
       }
     ];
 

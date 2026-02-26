@@ -2,14 +2,14 @@ const express = require('express');
 const router = express.Router();
 const postController = require('../controllers/postController');
 const { authenticate } = require('../middleware/authMiddleware');
-const { upload } = require('../middleware/uploadMiddleware');
+const { upload, uploadPost } = require('../middleware/uploadMiddleware');
 
 // All post routes require authentication
 router.use(authenticate);
 
 router.route('/')
   .get(postController.getPosts)
-  .post(upload.single('media'), postController.createPost);
+  .post(uploadPost.single('media'), postController.createPost);
 
 router.get('/user/:username', postController.getUserPosts);
 router.get('/saved', postController.getSavedPosts);

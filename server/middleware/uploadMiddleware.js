@@ -8,7 +8,9 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const storage = new CloudinaryStorage({
+// ── Profile picture uploads ──────────────────────────────────────────────────
+
+const profileStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'picsta_profiles',
@@ -17,9 +19,41 @@ const storage = new CloudinaryStorage({
   },
 });
 
-const upload = multer({ 
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+const upload = multer({
+  storage: profileStorage,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5 MB
 });
 
-module.exports = { upload, cloudinary };
+// ── Chat media uploads ───────────────────────────────────────────────────────
+
+const chatMediaStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'picsta_chats',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4'],
+    resource_type: 'auto'
+  },
+});
+
+const uploadChatMedia = multer({
+  storage: chatMediaStorage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB
+});
+
+// ── Post media uploads (Images & Videos) ───────────────────────────────────
+
+const postStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'picsta_posts',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'webm'],
+    resource_type: 'auto'
+  },
+});
+
+const uploadPost = multer({
+  storage: postStorage,
+  limits: { fileSize: 20 * 1024 * 1024 } // 20 MB
+});
+
+module.exports = { upload, uploadChatMedia, uploadPost, cloudinary };

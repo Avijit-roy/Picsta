@@ -77,6 +77,12 @@ exports.hideChat = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Chat not found' });
     }
 
+    // Authorization: only participants can hide the chat
+    const isParticipant = chat.participants.some(p => p.toString() === req.user.id.toString());
+    if (!isParticipant) {
+      return res.status(403).json({ success: false, message: 'You are not a participant in this chat' });
+    }
+
     // Add user to hiddenBy if not already there
     if (!chat.hiddenBy.includes(req.user.id)) {
       chat.hiddenBy.push(req.user.id);

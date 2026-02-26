@@ -27,12 +27,14 @@ import FollowListModal from "./profilepage/FollowListModal";
  * @param {Function} props.onBack - Callback for handling back navigation
  * @param {Function} props.onMessagesClick - Callback to initiate chat with the profile user
  */
-export default function ProfilePage({ onLogout, viewingUsername, onBack, onMessagesClick, onUpdatePost, onDeletePost, onLikeToggle }) {
+export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, onUpdatePost, onDeletePost, onUserClick }) {
+
+
   const { user, setUser } = useAuth();
   const [tab, setTab] = useState("posts");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [userPosts, setUserPosts] = useState([]);
+
   const [savedPosts, setSavedPosts] = useState([]); 
   const [loadingPosts, setLoadingPosts] = useState(false);
   
@@ -65,8 +67,8 @@ export default function ProfilePage({ onLogout, viewingUsername, onBack, onMessa
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        setLoading(true);
         let result;
+
         
         if (isOwnProfile) {
           result = await userService.getProfile();
@@ -94,9 +96,9 @@ export default function ProfilePage({ onLogout, viewingUsername, onBack, onMessa
       } catch (error) {
         console.error("Error fetching profile:", error);
         setAlert({ message: "Failed to load profile. Please try again.", type: "error" });
-      } finally {
-        setLoading(false);
       }
+
+
     };
 
     const fetchUserPosts = async (username) => {
@@ -156,12 +158,12 @@ export default function ProfilePage({ onLogout, viewingUsername, onBack, onMessa
     setFollowModal(prev => ({ ...prev, isOpen: false }));
     // Navigate to profile
     if (viewingUsername === username) return; // Already on this profile
-    // If the sidebar or navigation handles this via URL change, we might need a push
-    // In Picsta, navigating to profile usually triggers a state change in MainPage
-    // Actually, looking at ProfilePage usage, it's often swapped in MainPage.
-    // Let's use window.location or a callback if we had one.
-    // Wait, MainPage usually renders ProfilePage.
-    window.location.hash = `/profile/${username.replace(/^@/, '')}`;
+    if (onUserClick) {
+      onUserClick(username);
+    } else {
+      window.location.hash = `/profile/${username.replace(/^@/, '')}`;
+    }
+
   };
 
   const handleFollowToggle = async () => {
@@ -200,8 +202,8 @@ export default function ProfilePage({ onLogout, viewingUsername, onBack, onMessa
 
   const handleProfileUpdate = async (newData) => {
     try {
-      setLoading(true);
       const { profilePictureFile, ...profileData } = newData;
+
 
       let finalProfilePictureUrl = userData.profilePicture;
 
@@ -242,9 +244,9 @@ export default function ProfilePage({ onLogout, viewingUsername, onBack, onMessa
     } catch (error) {
       console.error("Failed to update profile:", error);
       setAlert({ message: error.response?.data?.message || "Error updating profile.", type: "error" });
-    } finally {
-      setLoading(false);
     }
+
+
   };
 
   const handleDeletePost = async (postId) => {
@@ -299,6 +301,33 @@ export default function ProfilePage({ onLogout, viewingUsername, onBack, onMessa
       width: "100%",
     }}>
       <div style={{ width: "100%", maxWidth: "480px", background: "#000", minHeight: "100vh" }}>
+        {/* Top Navigation Bar with Back Button */}
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '24px',
+          padding: '12px 16px',
+          zIndex: 100,
+          borderBottom: '1px solid #262626'
+        }}>
+          <button 
+            onClick={onBack}
+            className="btn btn-link p-0" 
+            style={{ color: 'white', display: 'flex', alignItems: 'center' }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
+            {userData.username || (viewingUsername ? (viewingUsername.startsWith('@') ? viewingUsername : `@${viewingUsername}`) : 'Profile')}
+          </span>
+        </div>
+
         {/* Header Section */}
         <ProfileHeader 
           userData={userData} 

@@ -2,52 +2,62 @@ const Message = require('../models/messageModel');
 const Chat = require('../models/chatModel');
 
 /**
- * @desc    Send a message
+ * @desc    Send a message (text or image)
  * @route   POST /api/messages
  * @access  Private
  */
 exports.sendMessage = async (req, res) => {
   try {
-    const { chatId, content, type = 'text', postId } = req.body;
+    const { chatId, content, type, postId, mediaUrl } = req.body;
 
-    if (!chatId || (!content && !postId)) {
-      return res.status(400).json({ success: false, message: 'Chat ID and content/postId are required' });
+    if (!chatId || (!content && !postId && !mediaUrl)) {
+      return res.status(400).json({
+        success: false,
+        message: 'chatId and at least one of content, postId, or mediaUrl are required'
+      });
     }
 
-    const newMessage = new Message({
-      sender: req.user.id,
-      chat: chatId,
-      content,
-      type,
-      post: postId
-    });
-
-    await newMessage.save();
-
-    // Update last message in chat and increment unread counts for others
     const chat = await Chat.findById(chatId);
     if (!chat) {
       return res.status(404).json({ success: false, message: 'Chat not found' });
     }
 
+    // Determine receiver for 1-on-1 chats
+    let receiverId = null;
+    if (!chat.isGroup) {
+      receiverId = chat.participants.find(p => p.toString() !== req.user.id.toString());
+    }
+
+    const resolvedType = type || (mediaUrl ? 'image' : 'text');
+
+    const newMessage = new Message({
+      sender: req.user.id,
+      receiver: receiverId,
+      chat: chatId,
+      content: content || '',
+      type: resolvedType,
+      post: postId,
+      mediaUrl: mediaUrl || ''
+    });
+
+    await newMessage.save();
+
+    // Update last message on chat
     chat.lastMessage = newMessage._id;
-    
-    // Increment unread counts for all participants except sender
-    chat.unreadCounts = chat.unreadCounts.map(uc => {
-      if (uc.user.toString() !== req.user.id.toString()) {
-        return { ...uc, count: uc.count + 1 };
-      }
-      return uc;
-    });
 
-    // If a participant doesn't have an unreadCount entry yet, add it
+    // Increment unread counts for other participants
     chat.participants.forEach(p => {
-      if (p.toString() !== req.user.id.toString() && !chat.unreadCounts.find(uc => uc.user.toString() === p.toString())) {
-        chat.unreadCounts.push({ user: p, count: 1 });
+      if (p.toString() !== req.user.id.toString()) {
+        const uc = chat.unreadCounts.find(u => u.user.toString() === p.toString());
+        if (uc) {
+          uc.count += 1;
+        } else {
+          chat.unreadCounts.push({ user: p, count: 1 });
+        }
       }
     });
 
-    // Clear hiddenBy array so chat reappears for everyone
+    // Reappear chat for all (clear hiddenBy)
     chat.hiddenBy = [];
 
     await chat.save();
@@ -56,10 +66,7 @@ exports.sendMessage = async (req, res) => {
       .populate('sender', 'name username profilePicture')
       .populate({
         path: 'post',
-        populate: {
-          path: 'author',
-          select: 'name username profilePicture'
-        }
+        populate: { path: 'author', select: 'name username profilePicture' }
       });
 
     // Emit real-time event
@@ -74,39 +81,60 @@ exports.sendMessage = async (req, res) => {
   }
 };
 
+
 /**
- * @desc    Get messages for a chat
+ * @desc    Upload a chat image to Cloudinary
+ * @route   POST /api/messages/upload
+ * @access  Private
+ */
+exports.uploadChatImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please upload an image' });
+    }
+
+    res.status(200).json({ success: true, mediaUrl: req.file.path });
+  } catch (error) {
+    console.error('Chat image upload error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+
+/**
+ * @desc    Get messages for a chat (paginated, oldest first)
  * @route   GET /api/messages/:chatId
  * @access  Private
  */
 exports.getMessages = async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { page = 1, limit = 50 } = req.query;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit) || 50);
 
-    const messages = await Message.find({ chat: chatId, deletedFor: { $ne: req.user.id } })
+    const messages = await Message.find({
+      chat: chatId,
+      deletedFor: { $ne: req.user.id }
+    })
       .populate('sender', 'name username profilePicture')
       .populate({
         path: 'post',
-        populate: {
-          path: 'author',
-          select: 'name username profilePicture'
-        }
+        populate: { path: 'author', select: 'name username profilePicture' }
       })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: 1 }) // Ascending — oldest first, no need to reverse
       .skip((page - 1) * limit)
-      .limit(Number(limit));
+      .limit(limit);
 
-    // Clear unread count for this user when they fetch messages
+    // Clear unread count for this user once they open the chat
     await Chat.updateOne(
       { _id: chatId, 'unreadCounts.user': req.user.id },
       { $set: { 'unreadCounts.$.count': 0 } }
     );
 
-    res.status(200).json({ 
-      success: true, 
-      data: messages.reverse(),
-      page: Number(page)
+    res.status(200).json({
+      success: true,
+      data: messages,
+      page
     });
   } catch (error) {
     console.error('Get messages error:', error);

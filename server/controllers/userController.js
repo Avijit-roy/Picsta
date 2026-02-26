@@ -71,22 +71,27 @@ exports.updateProfile = async (req, res, next) => {
 
 /**
  * Helper to extract Cloudinary Public ID from URL
+ * Handles any folder structure robustly using URL parsing.
  */
 const extractPublicId = (url) => {
   if (!url || !url.includes('cloudinary.com')) return null;
-  // Format: https://res.cloudinary.com/cloud_name/image/upload/v123456789/folder/public_id.jpg
-  const parts = url.split('/');
-  const lastPart = parts[parts.length - 1]; // public_id.jpg
-  const folderPart = parts[parts.length - 2]; // folder (if exists)
-  
-  const publicIdWithExtension = lastPart.split('.')[0];
-  
-  // If there's a folder (like 'picsta_profiles'), include it
-  if (url.includes('picsta_profiles')) {
-    return `picsta_profiles/${publicIdWithExtension}`;
+  try {
+    const parsed = new URL(url);
+    // pathname: /cloud_name/image/upload/v123456/folder/public_id.ext
+    const parts = parsed.pathname.split('/');
+    // Find the 'upload' segment and take everything after the version segment
+    const uploadIdx = parts.indexOf('upload');
+    if (uploadIdx === -1) return null;
+    // parts after upload: ['v12345', 'folder', 'public_id.ext']
+    const afterUpload = parts.slice(uploadIdx + 1);
+    // Skip version segment (starts with 'v' followed by digits)
+    const withoutVersion = afterUpload[0]?.match(/^v\d+$/) ? afterUpload.slice(1) : afterUpload;
+    // Join remaining parts, remove extension
+    const fullPublicId = withoutVersion.join('/');
+    return fullPublicId.replace(/\.[^/.]+$/, '');
+  } catch {
+    return null;
   }
-  
-  return publicIdWithExtension;
 };
 
 /**

@@ -3,6 +3,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import postService from '../../../../services/postService';
 import ShareModal from './ShareModal';
+import PostMedia from './PostMedia';
 
 const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail = false, onClose, onDelete, onUpdate }) => {
     const { user: authUser } = useAuth();
@@ -425,11 +426,9 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                     style={{ position: 'relative', backgroundColor: '#000', cursor: 'pointer' }}
                     onClick={handleTap}
                 >
-                     <img 
-                        src={post.image || (post.media && post.media[0] && post.media[0].url)} 
-                        alt="Post" 
-                        className="post-image"
-                        style={{ width: '100%', display: 'block', maxHeight: isDetail ? '500px' : '585px', objectFit: 'cover' }} 
+                     <PostMedia 
+                        media={post.media && post.media[0] ? post.media[0] : { url: post.image, type: 'image' }} 
+                        caption={post.caption}
                     />
                     
                     {showLargeHeart && (

@@ -25,6 +25,12 @@ const postSchema = new mongoose.Schema(
           type: String,
           enum: ["image", "video"],
           default: "image"
+        },
+        thumbnailUrl: {
+          type: String
+        },
+        duration: {
+          type: Number
         }
       }
     ],

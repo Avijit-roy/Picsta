@@ -7,13 +7,33 @@ const {
   hashToken,
   setAuthCookies,
   clearAuthCookies,
-  verifyToken  // ADD THIS HERE
+  verifyToken
 } = require('../utils/generateToken');
 const {
   sendVerificationEmail,
   sendPasswordResetLink,
   sendPasswordChangeConfirmation
 } = require('../utils/sendEmail');
+
+// ===========================
+// SHARED VALIDATORS
+// ===========================
+
+/**
+ * Validates password strength.
+ * @returns {string|null} Error message if invalid, null if valid.
+ */
+const validatePasswordStrength = (password) => {
+  if (!password || password.length < 8) {
+    return 'Password must be at least 8 characters long';
+  }
+  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
+  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter';
+  if (!/[0-9]/.test(password)) return 'Password must contain at least one number';
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return 'Password must contain at least one special character';
+  return null;
+};
+
 
 // ===========================
 // REGISTRATION
@@ -37,16 +57,9 @@ exports.register = async (req, res) => {
       });
     }
 
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-    if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must contain uppercase, lowercase, number, and special character'
-      });
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      return res.status(400).json({ success: false, message: passwordError });
     }
 
     // Unified length and character checks
@@ -545,22 +558,12 @@ exports.resetPassword = async (req, res) => {
     }
 
     if (newPassword.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 8 characters long'
-      });
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long' });
     }
 
-    const hasUpperCase = /[A-Z]/.test(newPassword);
-    const hasLowerCase = /[a-z]/.test(newPassword);
-    const hasNumber = /[0-9]/.test(newPassword);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
-
-    if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must contain uppercase, lowercase, number, and special character'
-      });
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ success: false, message: passwordError });
     }
 
     const hashedToken = hashToken(token);
@@ -620,22 +623,12 @@ exports.changePassword = async (req, res) => {
     }
 
     if (newPassword.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password must be at least 8 characters long'
-      });
+      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters long' });
     }
 
-    const hasUpperCase = /[A-Z]/.test(newPassword);
-    const hasLowerCase = /[a-z]/.test(newPassword);
-    const hasNumber = /[0-9]/.test(newPassword);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
-
-    if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password must contain uppercase, lowercase, number, and special character'
-      });
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ success: false, message: passwordError });
     }
 
     const user = await User.findById(userId);

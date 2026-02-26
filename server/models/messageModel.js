@@ -11,18 +11,33 @@ const messageSchema = new mongoose.Schema({
   sender: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    index: true
   },
 
+  receiver: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+
+  // Primary text content
   content: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
   },
-  
+
+  // Unified message type
   type: {
     type: String,
     enum: ['text', 'image', 'video', 'file', 'post'],
     default: 'text'
+  },
+
+  // Media URL (Cloudinary URL for images/videos)
+  mediaUrl: {
+    type: String,
+    default: ''
   },
 
   post: {
@@ -30,12 +45,13 @@ const messageSchema = new mongoose.Schema({
     ref: 'Post'
   },
 
-  mediaUrl: {
-    type: String,
-    default: ''
-  },
-
   readBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+
+  // Soft-delete: users who deleted this message for themselves
+  deletedFor: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
@@ -52,8 +68,7 @@ const messageSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-
-// Efficient pagination
+// Compound index for efficient, sorted pagination by chat
 messageSchema.index({ chat: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Message', messageSchema);
