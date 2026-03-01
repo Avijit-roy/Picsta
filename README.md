@@ -472,7 +472,7 @@ See the [LICENSE](./LICENSE) file for details.
 
 **Avijit Roy**
 
-- 📧 Email: [avijitroy@example.com](mailto:aj5298626@gmail.com)
+- 📧 Email: [MY MAIL](mailto:aj5298626@gmail.com)
 - 🐙 GitHub: [@avijitroy](https://github.com/Avijit-roy)
 
 ---
