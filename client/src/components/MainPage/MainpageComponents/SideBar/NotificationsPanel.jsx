@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import notificationService from '../../../../services/notificationService';
+import ListSkeleton from './ListSkeleton';
+import { useConfirm } from '../../../../context/ConfirmDialogUtils';
 
 const NotificationsPanel = ({ onClose, mobile = false, onUserClick, onPostClick }) => {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const confirm = useConfirm();
 
     const fetchNotifications = useCallback(async () => {
         try {
@@ -26,7 +29,13 @@ const NotificationsPanel = ({ onClose, mobile = false, onUserClick, onPostClick 
     }, [fetchNotifications]);
 
     const handleClearAll = async () => {
-        if (!window.confirm('Clear all notifications?')) return;
+        const ok = await confirm('This will remove all your notifications.', {
+            title: 'Clear all notifications?',
+            confirmText: 'Clear All',
+            cancelText: 'Cancel',
+            danger: true
+        });
+        if (!ok) return;
         try {
             await notificationService.clearAllNotifications();
             setNotifications([]);
@@ -173,9 +182,7 @@ const NotificationsPanel = ({ onClose, mobile = false, onUserClick, onPostClick 
             {/* Scrollable List */}
             <div style={{ overflowY: 'auto', flex: 1, scrollbarWidth: 'none' }}>
                 {loading ? (
-                    <div style={{ padding: '20px', textAlign: 'center', color: '#555', fontSize: '13px' }}>
-                        Loading notifications...
-                    </div>
+                    <ListSkeleton />
                 ) : notifications.length === 0 ? (
                     <div style={{ padding: '40px 20px', textAlign: 'center' }}>
                         <div style={{ fontSize: '14px', color: '#888', marginBottom: '8px' }}>No notifications yet</div>
@@ -252,7 +259,12 @@ const NotificationsPanel = ({ onClose, mobile = false, onUserClick, onPostClick 
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                                     {notif.post && notif.post.media && notif.post.media[0] && (
                                         <img 
-                                            src={notif.post.media[0].url} 
+                                            src={(() => {
+                                                const media = notif.post.media[0];
+                                                const url = media.type === 'video' ? media.thumbnailUrl : media.url;
+                                                if (!url) return '';
+                                                return url.startsWith('http') ? url : `http://localhost:5000${url}`;
+                                            })()}
                                             alt="Post" 
                                             style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: '4px' }}
                                         />

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import chatService from '../../../services/chatService';
 import messageService from '../../../services/messageService';
 import socketService from '../../../services/socketService';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../context/AuthUtils';
 import ConversationSidebar from './ConversationSidebar';
 import ChatPanel from './ChatPanel';
 import ChatEmptyState from './ChatEmptyState';
@@ -84,7 +84,26 @@ const MessagesPage = ({ onBack, initialChat, onUserClick, onPostClick }) => {
             });
         });
 
+        socketService.onMessagesDeleted(({ postId }) => {
+            setMessages((prev) => prev.filter(m => m.post?._id !== postId && m.post !== postId));
+        });
+
+        socketService.onChatUpdated((updatedChat) => {
+            setConversations((prev) => {
+                const index = prev.findIndex(c => c._id === updatedChat._id);
+                if (index !== -1) {
+                    const newConversations = [...prev];
+                    newConversations[index] = updatedChat;
+                    return newConversations.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+                }
+                return [updatedChat, ...prev].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            });
+        });
+
         return () => {
+            socketService.offNewMessage();
+            socketService.offMessagesDeleted();
+            socketService.offChatUpdated();
             socketService.disconnect();
         };
     }, [selected, user?.id, user?._id]);

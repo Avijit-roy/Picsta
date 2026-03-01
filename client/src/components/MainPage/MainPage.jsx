@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthUtils';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import postService from '../../services/postService';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import StoriesSection from './MainpageComponents/StoriesSection/StoriesSection';
@@ -38,6 +39,18 @@ const MainPage = () => {
     const [unreadNotifications, setUnreadNotifications] = useState(0);
     const [navigationStack, setNavigationStack] = useState([]);
 
+    // Dynamic Title Logic
+    const currentTitle = React.useMemo(() => {
+        if (showMessages) return 'Messages';
+        if (showReels) return 'Reels';
+        if (showCreate) return 'Create Post';
+        if (mobilePanelOpen === 'search') return 'Search';
+        if (mobilePanelOpen === 'notifications') return 'Notifications';
+        if (showProfile) return null; // ProfilePage will handle its own title
+        return null; // Default to App Name via TitleHandler/Base hook
+    }, [showMessages, showReels, showCreate, mobilePanelOpen, showProfile]);
+
+    usePageTitle(currentTitle);
 
     const goHome = () => { 
         setShowProfile(false); 
@@ -125,23 +138,6 @@ const MainPage = () => {
         return () => clearInterval(interval);
     }, [user]);
 
-    const [stories] = useState([
-        { id: 0, username: 'Your story', avatar: 'https://i.pravatar.cc/150?img=33', hasStory: false, isYourStory: true },
-        { id: 1, username: 'oanaargenti', avatar: 'https://i.pravatar.cc/150?img=1', hasStory: true },
-        { id: 2, username: 'sagarskd...', avatar: 'https://i.pravatar.cc/150?img=12', hasStory: true },
-        { id: 3, username: 'adityaa_b...', avatar: 'https://i.pravatar.cc/150?img=13', hasStory: true },
-        { id: 4, username: '__liesoso...', avatar: 'https://i.pravatar.cc/150?img=5', hasStory: true },
-        { id: 5, username: '__sou.mit...', avatar: 'https://i.pravatar.cc/150?img=8', hasStory: true },
-        { id: 6, username: 'soumya.d...', avatar: 'https://i.pravatar.cc/150?img=9', hasStory: true },
-        { id: 7, username: 'yourbong...', avatar: 'https://i.pravatar.cc/150?img=14', hasStory: true },
-        { id: 8, username: 'sarcastic...', avatar: 'https://i.pravatar.cc/150?img=15', hasStory: true },
-        { id: 9, username: 'mysticdev', avatar: 'https://i.pravatar.cc/150?img=22', hasStory: true },
-        { id: 10, username: 'webguru', avatar: 'https://i.pravatar.cc/150?img=27', hasStory: true },
-        { id: 11, username: 'codequeen', avatar: 'https://i.pravatar.cc/150?img=24', hasStory: true },
-        { id: 12, username: 'pixelmaster', avatar: 'https://i.pravatar.cc/150?img=25', hasStory: true },
-        { id: 13, username: 'snapstar', avatar: 'https://i.pravatar.cc/150?img=28', hasStory: true },
-    ]);
-
     // Body Scroll Locking logic
     useEffect(() => {
         const isAnyOverlayOpen = selectedPost || showMessages || showReels || showCreate || mobilePanelOpen;
@@ -176,6 +172,74 @@ const MainPage = () => {
 
         fetchPosts();
     }, []);
+
+    // Global Post Update Listener
+    useEffect(() => {
+        const handlePostUpdate = (e) => {
+            const { postId, likesCount, isLiked, isSaved, commentsCount } = e.detail;
+            
+            setRealPosts(prev => prev.map(p => {
+                if (p._id === postId || p.id === postId) {
+                    const update = {};
+                    if (likesCount !== undefined) update.likesCount = likesCount;
+                    if (isLiked !== undefined) {
+                        update.isLiked = isLiked;
+                        // Also sync likes array if it exists
+                        if (Array.isArray(p.likes) && user) {
+                            const currentUserId = user.id || user._id;
+                            update.likes = isLiked 
+                                ? [...new Set([...p.likes, currentUserId])]
+                                : p.likes.filter(id => id.toString() !== currentUserId.toString());
+                        }
+                    }
+                    if (isSaved !== undefined) update.isSaved = isSaved;
+                    if (commentsCount !== undefined) update.commentsCount = commentsCount;
+                    return { ...p, ...update };
+                }
+                return p;
+            }));
+
+            if (selectedPost && (selectedPost._id === postId || selectedPost.id === postId)) {
+                setSelectedPost(prev => {
+                    const update = {};
+                    if (likesCount !== undefined) update.likesCount = likesCount;
+                    if (isLiked !== undefined) {
+                        update.isLiked = isLiked;
+                        if (Array.isArray(prev.likes) && user) {
+                            const currentUserId = user.id || user._id;
+                            update.likes = isLiked 
+                                ? [...new Set([...prev.likes, currentUserId])]
+                                : prev.likes.filter(id => id.toString() !== currentUserId.toString());
+                        }
+                    }
+                    if (isSaved !== undefined) update.isSaved = isSaved;
+                    if (commentsCount !== undefined) update.commentsCount = commentsCount;
+                    return { ...prev, ...update };
+                });
+            }
+        };
+
+        const handleUserFollowUpdate = (e) => {
+            const { userId, isFollowing } = e.detail;
+            setRealPosts(prev => prev.map(p => {
+                if (p.author?._id === userId || p.author === userId) {
+                    return { ...p, isFollowing };
+                }
+                return p;
+            }));
+
+            if (selectedPost && (selectedPost.author?._id === userId || selectedPost.author === userId)) {
+                setSelectedPost(prev => ({ ...prev, isFollowing }));
+            }
+        };
+
+        window.addEventListener('POST_UPDATED', handlePostUpdate);
+        window.addEventListener('USER_FOLLOW_UPDATED', handleUserFollowUpdate);
+        return () => {
+            window.removeEventListener('POST_UPDATED', handlePostUpdate);
+            window.removeEventListener('USER_FOLLOW_UPDATED', handleUserFollowUpdate);
+        };
+    }, [selectedPost, user]);
 
     const handleNewPost = (newPost) => {
         setRealPosts(prev => [newPost, ...prev]);
@@ -239,6 +303,12 @@ const MainPage = () => {
                             : (prev.likes || []).filter(id => id !== currentUserId)
                     }));
                 }
+                
+                // Notify other components (like Reels)
+                postService.notifyPostUpdate(postId, {
+                    likesCount: result.likesCount,
+                    isLiked: result.isLiked
+                });
             }
         } catch (error) {
             console.error("Failed to toggle like:", error);
@@ -325,7 +395,7 @@ const MainPage = () => {
                 ) : (
                     <>
                         {/* Stories Section Component */}
-                        <StoriesSection stories={stories} />
+                        <StoriesSection />
 
                         {/* Post Feed Component */}
                         {loadingPosts ? (
@@ -360,7 +430,7 @@ const MainPage = () => {
 
             {showReels && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 1500 }}>
-                    <ReelsViewer />
+                    <ReelsViewer onClose={goHome} onUserClick={handleUserClick} />
                 </div>
             )}
 

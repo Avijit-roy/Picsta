@@ -13,7 +13,7 @@ import React from 'react';
  * @param {Function} props.onFollowToggle - Handler for follow/unfollow actions
  * @param {Function} props.onMessageClick - Handler for initiating a message/chat
  */
-const ProfileInfo = ({ userData, isOwnProfile, onEditClick, onFollowToggle, onMessageClick }) => {
+const ProfileInfo = ({ userData, isOwnProfile, isFollowLoading, onEditClick, onFollowToggle, onMessageClick }) => {
   return (
     <>
       <div className="user-info" style={{ marginBottom: '24px', textAlign: 'left' }}>
@@ -84,8 +84,22 @@ const ProfileInfo = ({ userData, isOwnProfile, onEditClick, onFollowToggle, onMe
                 transition: 'background 0.2s',
               }}
               onClick={onFollowToggle}
+              disabled={isFollowLoading}
             >
-              {userData.isFollowing ? 'Following' : 'Follow'}
+              {isFollowLoading ? (
+                <div style={{
+                  width: '14px',
+                  height: '14px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTopColor: '#fff',
+                  borderRadius: '50%',
+                  animation: 'spin 0.6s linear infinite',
+                  margin: '0 auto'
+                }} />
+              ) : (
+                userData.isFollowing ? 'Following' : 'Follow'
+              )}
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </button>
             <button 
               className="btn-full-width" 

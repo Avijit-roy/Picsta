@@ -54,6 +54,30 @@ class SocketService {
       this.socket.off('new_message');
     }
   }
+
+  onMessagesDeleted(callback) {
+    if (this.socket) {
+      this.socket.on('messages_deleted', callback);
+    }
+  }
+
+  offMessagesDeleted() {
+    if (this.socket) {
+      this.socket.off('messages_deleted');
+    }
+  }
+
+  onChatUpdated(callback) {
+    if (this.socket) {
+      this.socket.on('chat_updated', callback);
+    }
+  }
+
+  offChatUpdated() {
+    if (this.socket) {
+      this.socket.off('chat_updated');
+    }
+  }
 }
 
 const socketService = new SocketService();

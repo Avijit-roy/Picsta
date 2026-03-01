@@ -149,6 +149,10 @@ app.use('/api/users', userRoutes);
 // Post routes
 app.use('/api/posts', postRoutes);
 
+// Story routes
+const storyRoutes = require('./routes/storyRoutes');
+app.use('/api/stories', storyRoutes);
+
 // Chat routes
 app.use('/api/chats', chatRoutes);
 

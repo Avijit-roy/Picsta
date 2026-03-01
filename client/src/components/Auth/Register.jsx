@@ -3,11 +3,11 @@ import { useNavigate, Link } from "react-router-dom";
 import styles from "./Register.module.css";
 import Footer from "./Footer";
 import authService from "../../services/authService";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from '../../context/AuthUtils';
 
 const Register = () => {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [birthdayMonth, setBirthdayMonth] = useState("");

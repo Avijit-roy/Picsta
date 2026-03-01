@@ -222,16 +222,19 @@ exports.getUserProfileByUsername = async (req, res) => {
     // Record this visit in recent search if not self
     if (user._id.toString() !== req.user.id) {
       try {
-        // Move to front if exists, then slice to 5
+        // Use a single update with $pull to remove existing, 
+        // then another with $push to place at front and slice.
+        // This ensures the user is moved to the top if they already existed.
         await User.findByIdAndUpdate(req.user.id, {
           $pull: { recentSearches: user._id }
         });
+        
         await User.findByIdAndUpdate(req.user.id, {
           $push: {
             recentSearches: {
               $each: [user._id],
               $position: 0,
-              $slice: 5
+              $slice: 10 // Store up to 10 recent searches
             }
           }
         });

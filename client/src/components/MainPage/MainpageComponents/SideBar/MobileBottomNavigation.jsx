@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+import { useAuth } from '../../../../context/AuthUtils';
 
 const MobileBottomNavigation = ({ onProfileClick, onHomeClick, onSearchClick, onMessagesClick, onReelsClick, unreadMessages = 0 }) => {
     const { user } = useAuth();

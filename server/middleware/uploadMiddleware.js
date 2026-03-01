@@ -56,4 +56,20 @@ const uploadPost = multer({
   limits: { fileSize: 20 * 1024 * 1024 } // 20 MB
 });
 
-module.exports = { upload, uploadChatMedia, uploadPost, cloudinary };
+// ── Story media uploads (Images & Videos) ───────────────────────────────────
+
+const storyStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'picsta_stories',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'webm'],
+    resource_type: 'auto'
+  },
+});
+
+const uploadStory = multer({
+  storage: storyStorage,
+  limits: { fileSize: 15 * 1024 * 1024 } // 15 MB for stories
+});
+
+module.exports = { upload, uploadChatMedia, uploadPost, uploadStory, cloudinary };

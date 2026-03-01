@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import userService from '../../../../services/userService';
+import ListSkeleton from './ListSkeleton';
 
 // --- Sub-components ---
 
@@ -147,7 +148,12 @@ const SearchPanel = ({ onClose, onUserClick, mobile = false }) => {
         onClose();
     };
 
-    const displayList = query.length > 0 ? searchResults : recents;
+    // Filter displayList to ensure unique IDs as a safety measure
+    const displayList = (query.length > 0 ? searchResults : recents).filter((item, index, self) => 
+        index === self.findIndex((t) => (
+            (t.id || t._id) === (item.id || item._id)
+        ))
+    );
 
     return (
         <div style={{ ...styles.panel, width: mobile ? '100vw' : '380px', borderRight: mobile ? 'none' : '1px solid #262626', borderRadius: mobile ? '0' : '0 16px 16px 0', paddingBottom: mobile ? '70px' : '20px', boxShadow: mobile ? 'none' : '4px 0 24px rgba(0,0,0,0.7)' }}>
@@ -192,11 +198,7 @@ const SearchPanel = ({ onClose, onUserClick, mobile = false }) => {
             {/* Result List */}
             <div style={styles.listArea}>
                 {isLoading ? (
-                    <div style={styles.loaderContainer}>
-                        <div className="spinner-border spinner-border-sm text-light" role="status">
-                            <span className="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
+                    <ListSkeleton />
                 ) : displayList.length === 0 ? (
                     <p style={styles.emptyText}>
                         {query.length > 0 ? 'No results found.' : 'No recent searches.'}

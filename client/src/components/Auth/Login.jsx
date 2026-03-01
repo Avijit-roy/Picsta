@@ -3,9 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import styles from './Login.module.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Footer from './Footer';
-import backgroundImage from '../../assets/pexels-debora-silva-2149722460-32678993.jpg';
+import backgroundImage from '../../assets/venyamin-koretskiy-zZoFi3ai1zU-unsplash.jpg';
 import authService from '../../services/authService';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthUtils';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -60,7 +60,7 @@ const Login = () => {
                             </div>
                             <div className={styles["card-content"]}>
                                 <h3>Welcome Back 👋</h3>
-                                <p>Tailor to a new way. It's your day. You changed it. Sign in to start managing your projects.</p>
+                                <p>Today’s vibe check: What’s one small win you had this week?.</p>
                             </div>
                         </div>
                     </div>
@@ -96,7 +96,7 @@ const Login = () => {
                                       try {
                                         await authService.resendVerification(unverifiedEmail);
                                         setResendSuccess(true);
-                                      } catch (e) {
+                                      } catch {
                                         setError('Failed to resend verification email.');
                                       } finally {
                                         setResendLoading(false);

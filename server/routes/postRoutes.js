@@ -13,12 +13,14 @@ router.route('/')
 
 router.get('/user/:username', postController.getUserPosts);
 router.get('/saved', postController.getSavedPosts);
+router.get('/reels', postController.getReels);
 
 router.route('/:id')
   .patch(postController.updatePost)
   .delete(postController.deletePost);
 
 router.post('/:id/like', postController.toggleLike);
+router.get('/:id/likers', postController.getLikers);
 router.post('/:id/save', postController.toggleSave);
 
 // Comment routes

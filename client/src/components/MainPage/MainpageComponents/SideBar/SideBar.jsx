@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from "../../../../context/AuthContext";
+import { useAuth } from "../../../../context/AuthUtils";
 import SearchPanel from './SearchPanel';
 import NotificationsPanel from './NotificationsPanel';
 

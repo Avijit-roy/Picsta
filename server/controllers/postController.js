@@ -3,6 +3,33 @@ const User = require('../models/userModel');
 const Comment = require('../models/commentModel');
 const Notification = require('../models/notificationModel');
 const { cloudinary } = require('../middleware/uploadMiddleware');
+const Message = require('../models/messageModel');
+const Chat = require('../models/chatModel');
+
+/**
+ * Helper to format post with user-specific status
+ */
+const formatPost = (post, userId) => {
+  const postObj = post.toObject ? post.toObject() : post;
+  const currentUserId = userId?.toString();
+  
+  const formattedPost = {
+    ...postObj,
+    isLiked: postObj.likes && currentUserId ? postObj.likes.some(id => id.toString() === currentUserId) : false,
+    isSaved: postObj.saves && currentUserId ? postObj.saves.some(id => id.toString() === currentUserId) : false,
+    isFollowing: postObj.author && postObj.author.followers && currentUserId 
+      ? postObj.author.followers.some(id => id.toString() === currentUserId) 
+      : false,
+    likesCount: postObj.likes ? postObj.likes.length : 0
+  };
+
+  // Also inject isFollowing into the author object if it's an object populated with followers
+  if (formattedPost.author && typeof formattedPost.author === 'object') {
+    formattedPost.author.isFollowing = formattedPost.isFollowing;
+  }
+
+  return formattedPost;
+};
 
 /**
  * @desc    Create a new post
@@ -68,7 +95,7 @@ exports.createPost = async (req, res, next) => {
     });
 
     // Populate author info for the response
-    const populatedPost = await Post.findById(newPost._id).populate('author', 'name username profilePicture');
+    const populatedPost = await Post.findById(newPost._id).populate('author', 'name username profilePicture followers');
 
     // Update user's post count
     await User.findByIdAndUpdate(authorId, { $inc: { postsCount: 1 } });
@@ -76,7 +103,7 @@ exports.createPost = async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: 'Post shared successfully',
-      data: populatedPost
+      data: formatPost(populatedPost, req.user.id)
     });
   } catch (error) {
     next(error);
@@ -94,13 +121,15 @@ exports.getPosts = async (req, res, next) => {
     // For now, let's just get everything sorted by date
     const posts = await Post.find({ visibility: 'public' })
       .sort({ createdAt: -1 })
-      .populate('author', 'name username profilePicture')
+      .populate('author', 'name username profilePicture followers')
       .limit(20);
+
+    const formattedPosts = posts.map(post => formatPost(post, req.user.id));
 
     res.status(200).json({
       success: true,
       count: posts.length,
-      data: posts
+      data: formattedPosts
     });
   } catch (error) {
     next(error);
@@ -126,12 +155,14 @@ exports.getUserPosts = async (req, res, next) => {
 
     const posts = await Post.find({ author: user._id })
       .sort({ createdAt: -1 })
-      .populate('author', 'name username profilePicture');
+      .populate('author', 'name username profilePicture followers');
+
+    const formattedPosts = posts.map(post => formatPost(post, req.user.id));
 
     res.status(200).json({
       success: true,
       count: posts.length,
-      data: posts
+      data: formattedPosts
     });
   } catch (error) {
     next(error);
@@ -180,6 +211,35 @@ exports.deletePost = async (req, res, next) => {
       }
     }
 
+    // Handle shared messages deletion
+    const sharedMessages = await Message.find({ post: req.params.id });
+    const affectedChatIds = [...new Set(sharedMessages.map(m => m.chat.toString()))];
+
+    await Message.deleteMany({ post: req.params.id });
+    await Notification.deleteMany({ post: req.params.id });
+
+    // Update affected chats
+    for (const chatId of affectedChatIds) {
+      const lastMsg = await Message.findOne({ chat: chatId }).sort({ createdAt: -1 });
+      const updateData = {
+        lastMessage: lastMsg ? lastMsg._id : null
+      };
+      if (lastMsg) {
+          updateData.updatedAt = lastMsg.createdAt;
+      }
+      
+      const updatedChat = await Chat.findByIdAndUpdate(chatId, updateData, { new: true })
+        .populate('lastMessage')
+        .populate('participants', 'name username profilePicture');
+
+      if (req.io) {
+        // Notify chat room about message deletion
+        req.io.to(chatId).emit('messages_deleted', { postId: req.params.id });
+        // Update sidebar preview
+        req.io.to(chatId).emit('chat_updated', updatedChat);
+      }
+    }
+
     await Post.deleteOne({ _id: req.params.id });
 
     // Decrement user's post count (safely)
@@ -225,7 +285,7 @@ exports.updatePost = async (req, res, next) => {
     await post.save();
 
     // Re-populate author for frontend consistency
-    const updatedPost = await Post.findById(post._id).populate('author', 'name username profilePicture');
+    const updatedPost = await Post.findById(post._id).populate('author', 'name username profilePicture followers');
 
     res.status(200).json({
       success: true,
@@ -280,6 +340,7 @@ exports.toggleLike = async (req, res, next) => {
       success: true,
       isLiked: !isLiked,
       likesCount: post.likes.length,
+      data: formatPost(post, req.user.id),
       message: isLiked ? 'Post unliked' : 'Post liked'
     });
   } catch (error) {
@@ -307,11 +368,26 @@ exports.addComment = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
+    let finalParentId = parentCommentId || null;
+    let replyToUserId = null;
+
+    if (parentCommentId) {
+      const parentComment = await Comment.findById(parentCommentId);
+      if (parentComment) {
+        replyToUserId = parentComment.author;
+        // If the parent is itself a reply, attach to its parent (top-level)
+        if (parentComment.parentComment) {
+          finalParentId = parentComment.parentComment;
+        }
+      }
+    }
+
     const comment = await Comment.create({
       post: postId,
       author: authorId,
       text,
-      parentComment: parentCommentId || null
+      parentComment: finalParentId,
+      replyToUser: replyToUserId
     });
 
     // Trigger Notification (only if not commenting on own post)
@@ -334,7 +410,7 @@ exports.addComment = async (req, res, next) => {
     await post.save();
 
     // Populate author for response
-    const populatedComment = await Comment.findById(comment._id).populate('author', 'name username profilePicture');
+    const populatedComment = await Comment.findById(comment._id).populate('author', 'name username profilePicture followers');
 
     res.status(201).json({
       success: true,
@@ -354,7 +430,8 @@ exports.addComment = async (req, res, next) => {
 exports.getPostComments = async (req, res, next) => {
   try {
     const comments = await Comment.find({ post: req.params.id })
-      .populate('author', 'name username profilePicture')
+      .populate('author', 'name username profilePicture followers')
+      .populate('replyToUser', 'name username')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -428,6 +505,7 @@ exports.toggleSave = async (req, res, next) => {
     res.status(200).json({
       success: true,
       isSaved: !isSaved,
+      data: formatPost(post, req.user.id),
       message: isSaved ? 'Post unsaved' : 'Post saved'
     });
   } catch (error) {
@@ -444,12 +522,75 @@ exports.getSavedPosts = async (req, res, next) => {
   try {
     const posts = await Post.find({ saves: req.user.id })
       .sort({ createdAt: -1 })
-      .populate('author', 'name username profilePicture');
+      .populate('author', 'name username profilePicture followers');
+
+    const formattedPosts = posts.map(post => formatPost(post, req.user.id));
 
     res.status(200).json({
       success: true,
       count: posts.length,
-      data: posts
+      data: formattedPosts
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+/**
+ * @desc    Get all video posts (Reels)
+ * @route   GET /api/posts/reels
+ * @access  Private
+ */
+exports.getReels = async (req, res, next) => {
+  try {
+    const reels = await Post.find({ 'media.type': 'video' })
+      .sort({ createdAt: -1 })
+      .populate('author', 'name username profilePicture followers');
+
+    const formattedReels = reels.map(reel => formatPost(reel, req.user.id));
+
+    res.status(200).json({
+      success: true,
+      count: reels.length,
+      data: formattedReels
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get users who liked a post
+ * @route   GET /api/posts/:id/likers
+ * @access  Private
+ */
+exports.getLikers = async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.id)
+      .populate({
+        path: 'likes',
+        select: 'name username profilePicture followers'
+      });
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    const currentUserId = req.user.id;
+    const likers = post.likes.map(liker => {
+      const isFollowing = liker.followers && liker.followers.some(id => id.toString() === currentUserId);
+      return {
+        _id: liker._id,
+        name: liker.name,
+        username: liker.username,
+        profilePicture: liker.profilePicture,
+        isFollowing
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      count: likers.length,
+      data: likers
     });
   } catch (error) {
     next(error);

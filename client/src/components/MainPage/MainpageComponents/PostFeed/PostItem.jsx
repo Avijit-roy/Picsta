@@ -1,7 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+import { useAuth } from '../../../../context/AuthUtils';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import postService from '../../../../services/postService';
+import LikersModal from "./LikersModal";
+import CustomAlert from "./CustomAlert";
 import ShareModal from './ShareModal';
 import PostMedia from './PostMedia';
 
@@ -9,9 +11,9 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
     const { user: authUser } = useAuth();
     const currentUser = user || authUser;
     
-    const [showLargeHeart, setShowLargeHeart] = useState(false);
     const [showOptions, setShowOptions] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
+    const [showLargeHeart, setShowLargeHeart] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -23,6 +25,8 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
     const [isPostingComment, setIsPostingComment] = useState(false);
     const [replyingTo, setReplyingTo] = useState(null); // { id, username }
     const [expandedComments, setExpandedComments] = useState({}); // { commentId: boolean }
+    const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
+    const [isLikersModalOpen, setIsLikersModalOpen] = useState(false);
     const lastTap = useRef(0);
     const timerRef = useRef(null);
     const editInputRef = useRef(null);
@@ -30,7 +34,7 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
     const isOwner = currentUser?.id === post.author?._id || currentUser?.id === post.author;
     const authorUsername = post.username || (post.author && post.author.username);
     const authorAvatar = authorAvatarFromPost(post);
-    const isLiked = post.isLiked || (Array.isArray(post.likes) && currentUser && post.likes.includes(currentUser.id));
+    const isLiked = post.isLiked !== undefined ? post.isLiked : (Array.isArray(post.likes) && currentUser && post.likes.includes(currentUser.id));
     const isSaved = post.isSaved !== undefined ? post.isSaved : (Array.isArray(post.saves) && currentUser && post.saves.includes(currentUser.id));
 
     function authorAvatarFromPost(p) {
@@ -116,6 +120,11 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                 // If it's the Saved tab, it might need to be removed from the list, but 
                 // typically we just update the UI state.
                 onUpdate({ ...post, isSaved: result.isSaved });
+                
+                // Notify other components
+                postService.notifyPostUpdate(post._id, {
+                    isSaved: result.isSaved
+                });
             }
         } catch (error) {
             console.error('Failed to toggle save:', error);
@@ -138,7 +147,13 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                     setExpandedComments(prev => ({ ...prev, [replyingTo.id]: true }));
                 }
                 if (onUpdate) {
-                    onUpdate({ ...post, commentsCount: (post.commentsCount || 0) + 1 });
+                    const newCommentsCount = (post.commentsCount || 0) + 1;
+                    onUpdate({ ...post, commentsCount: newCommentsCount });
+                    
+                    // Notify other components
+                    postService.notifyPostUpdate(post._id, {
+                        commentsCount: newCommentsCount
+                    });
                 }
             }
         } catch (error) {
@@ -171,6 +186,11 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                     onUpdate(result.data);
                 }
                 setIsEditing(false);
+
+                // Notify other components
+                postService.notifyPostUpdate(post._id, {
+                    caption: result.data.caption
+                });
             }
         } catch (error) {
             console.error('Failed to update post:', error);
@@ -327,10 +347,11 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                         padding-top: max(16px, env(safe-area-inset-top)) !important;
                     }
                     .detail-modal .post-image-container {
-                        max-height: 45vh !important;
+                        max-height: none !important;
+                        overflow: hidden;
                     }
                     .detail-modal .post-image {
-                        max-height: 45vh !important;
+                        max-height: none !important;
                         object-fit: contain !important;
                         background: #000;
                     }
@@ -465,22 +486,27 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                     {/* Action Buttons with Counts */}
                     <div className="d-flex align-items-center justify-content-between" style={{ paddingTop: '12px', paddingBottom: '12px' }}>
                         <div className="d-flex align-items-center" style={{ gap: '16px' }}>
-                            {/* Like Button with Count */}
-                            <button 
-                                className="btn btn-link p-0 d-flex align-items-center" 
-                                style={{ color: 'white', gap: '6px', textDecoration: 'none' }}
-                                onClick={handleLikeClick}
-                            >
-                                <svg 
-                                    className={isLiked ? "heart-pop-active" : ""}
-                                    width="24" height="24" viewBox="0 0 24 24" fill={isLiked ? "#ff3040" : "none"} stroke={isLiked ? "#ff3040" : "white"} strokeWidth="2"
+                            {/* Like Action and Count */}
+                            <div className="d-flex align-items-center" style={{ gap: '6px' }}>
+                                <button 
+                                    className="btn btn-link p-0 d-flex align-items-center" 
+                                    style={{ color: 'white', textDecoration: 'none' }}
+                                    onClick={handleLikeClick}
                                 >
-                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                                </svg>
-                                 <span style={{ fontSize: '14px', fontWeight: '600', color: '#fff', textDecoration: 'none' }}>
+                                    <svg 
+                                        className={isLiked ? "heart-pop-active" : ""}
+                                        width="24" height="24" viewBox="0 0 24 24" fill={isLiked ? "#ff3040" : "none"} stroke={isLiked ? "#ff3040" : "white"} strokeWidth="2"
+                                    >
+                                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                    </svg>
+                                </button>
+                                <span 
+                                    onClick={(e) => { e.stopPropagation(); setIsLikersModalOpen(true); }}
+                                    style={{ fontSize: '14px', fontWeight: '600', color: '#fff', cursor: 'pointer', userSelect: 'none' }}
+                                >
                                     {post.likesCount !== undefined ? post.likesCount : (Array.isArray(post.likes) ? post.likes.length : 0)}
-                                 </span>
-                            </button>
+                                </span>
+                            </div>
 
                             {/* Comment Button with Count */}
                             <button 
@@ -538,7 +564,21 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                                     {authorUsername}
                                 </span>
                                 {' '}
-                                <span style={{ fontWeight: '400' }}>{post.caption}</span>
+                                <span style={{ fontWeight: '400' }}>
+                                    {isCaptionExpanded || !post.caption || post.caption.length <= 80 ? (
+                                        post.caption
+                                    ) : (
+                                        <>
+                                            {post.caption.substring(0, 80)}
+                                            <span 
+                                                onClick={() => setIsCaptionExpanded(true)}
+                                                style={{ color: '#737373', cursor: 'pointer', marginLeft: '4px' }}
+                                            >
+                                                more
+                                            </span>
+                                        </>
+                                    )}
+                                </span>
                                 {post.isEdited && (
                                     <span style={{ fontSize: '10px', color: '#737373', marginLeft: '6px' }}>(edited)</span>
                                 )}
@@ -668,6 +708,11 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                                                                                         />
                                                                                     </div>
                                                                                     <div style={{ flex: 1 }}>
+                                                                                        {reply.replyToUser && reply.replyToUser.username !== comment.author?.username && (
+                                                                                            <div style={{ fontSize: '11px', color: '#a8a8a8', marginBottom: '2px', textAlign: 'left' }}>
+                                                                                                Replying to <span style={{ color: '#0095f6', cursor: 'pointer', fontWeight: '500' }} onClick={() => onUserClick?.(reply.replyToUser.username)}>@{reply.replyToUser.username}</span>
+                                                                                            </div>
+                                                                                        )}
                                                                                         <div style={{ fontSize: '14px', color: 'white', textAlign: 'left', lineHeight: '1.4' }}>
                                                                                             <span 
                                                                                                 style={{ fontWeight: '600', marginRight: '6px', cursor: 'pointer' }}
@@ -792,6 +837,13 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                 onClose={() => setShowShareModal(false)}
                 post={post}
                 currentUser={currentUser}
+            />
+            {/* Likers Modal */}
+            <LikersModal 
+                isOpen={isLikersModalOpen}
+                onClose={() => setIsLikersModalOpen(false)}
+                postId={post._id}
+                onUserClick={onUserClick}
             />
         </div>
     );

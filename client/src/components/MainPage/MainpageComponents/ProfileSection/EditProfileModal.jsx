@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import ImageCropper from "./ImageCropper";
 import userService from "../../../../services/userService";
 
@@ -12,20 +12,26 @@ export default function EditProfileModal({ isOpen, onClose, userData, onSave }) 
   const [usernameStatus, setUsernameStatus] = useState({ checking: false, available: null, message: '' });
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && userData) {
       // Ensure username starts with @ on load
       const initialData = { ...userData };
       if (initialData.username && !initialData.username.startsWith('@')) {
         initialData.username = '@' + initialData.username;
       }
-      setFormData(initialData);
-      setPreviewUrl(userData.profilePicture);
-      setProfilePictureFile(null);
-      setErrors({});
-      setTempImage(null);
-      setShowCropper(false);
-      setUsernameStatus({ checking: false, available: null, message: '' });
+      
+      // Use a timeout to avoid synchronous set state in effect warming
+      const t = setTimeout(() => {
+        setFormData(initialData);
+        setPreviewUrl(userData.profilePicture);
+        setProfilePictureFile(null);
+        setErrors({});
+        setTempImage(null);
+        setShowCropper(false);
+        setUsernameStatus({ checking: false, available: null, message: '' });
+      }, 0);
+      
       document.body.style.overflow = "hidden";
+      return () => clearTimeout(t);
     } else {
       document.body.style.overflow = "auto";
     }
@@ -35,8 +41,8 @@ export default function EditProfileModal({ isOpen, onClose, userData, onSave }) 
     const checkUsername = async () => {
       const usernamePart = formData.username.substring(1).toLowerCase();
       
-      // Don't check if it's the same as current
-      if (formData.username === userData.username) {
+      // Don't check if it's the same as current or formData is not set yet
+      if (!formData || !formData.username || formData.username === userData.username) {
         setUsernameStatus({ checking: false, available: null, message: '' });
         return;
       }
@@ -68,7 +74,7 @@ export default function EditProfileModal({ isOpen, onClose, userData, onSave }) 
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [formData.username, userData.username]);
+  }, [formData.username, userData.username, formData]);
 
   if (!isOpen) return null;
 

@@ -109,16 +109,19 @@ const PostMedia = ({ media, caption }) => {
     }
 
     return (
-        <img 
-            src={media.url} 
-            alt={caption || 'Post media'} 
-            style={{
-                width: '100%',
-                display: 'block',
-                objectFit: 'cover'
-            }}
-            loading="lazy"
-        />
+        <div style={{ width: '100%', aspectRatio: '4/5', background: '#000', overflow: 'hidden' }}>
+            <img 
+                src={media.url} 
+                alt={caption || 'Post media'} 
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'block',
+                    objectFit: 'contain'
+                }}
+                loading="lazy"
+            />
+        </div>
     );
 };
 

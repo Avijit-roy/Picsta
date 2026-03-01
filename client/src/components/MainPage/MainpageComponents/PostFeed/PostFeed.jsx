@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+import { useAuth } from '../../../../context/AuthUtils';
 import PostItem from './PostItem';
 
 const PostFeed = ({ posts, onPostClick, onUserClick, onLikeToggle, onDelete, onUpdate }) => {

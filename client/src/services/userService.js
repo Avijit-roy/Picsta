@@ -119,6 +119,15 @@ const userService = {
   getFollowing: async (userId) => {
     const response = await api.get(`/users/${userId}/following`);
     return response.data;
+  },
+
+  /**
+   * Notify other components about a user follow status update
+   * @param {string} userId 
+   * @param {boolean} isFollowing 
+   */
+  notifyUserFollowUpdate: (userId, isFollowing) => {
+    window.dispatchEvent(new CustomEvent('USER_FOLLOW_UPDATED', { detail: { userId, isFollowing } }));
   }
 };
 

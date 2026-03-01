@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import ImageCropper from '../ProfileSection/ImageCropper';
 import postService from '../../../../services/postService';
+import CustomAlert from '../PostFeed/CustomAlert';
 
 const CreatePost = ({ onBack, onPost }) => {
     const [file, setFile] = useState(null);
@@ -11,6 +12,7 @@ const CreatePost = ({ onBack, onPost }) => {
     const [loading, setLoading] = useState(false);
     const [duration, setDuration] = useState(null);
     const [fileType, setFileType] = useState(null);
+    const [alert, setAlert] = useState(null);
     const fileInputRef = useRef(null);
 
     const handleFileChange = (e) => {
@@ -30,7 +32,7 @@ const CreatePost = ({ onBack, onPost }) => {
             } else if (selectedFile.type.startsWith('video/')) {
                 // Check file size (20MB)
                 if (selectedFile.size > 20 * 1024 * 1024) {
-                    alert('Video file size exceeds 20MB limit.');
+                    setAlert({ message: 'Video file size exceeds 20MB limit.', type: 'error' });
                     return;
                 }
 
@@ -41,7 +43,7 @@ const CreatePost = ({ onBack, onPost }) => {
                     window.URL.revokeObjectURL(video.src);
                     const dur = video.duration;
                     if (dur < 3 || dur > 30) {
-                        alert('Video duration must be between 3 and 30 seconds.');
+                        setAlert({ message: 'Video duration must be between 3 and 30 seconds.', type: 'error' });
                         setFile(null);
                         setPreview(null);
                         setFileType(null);
@@ -85,7 +87,10 @@ const CreatePost = ({ onBack, onPost }) => {
             }
         } catch (error) {
             console.error('Failed to create post:', error);
-            alert(error.response?.data?.message || 'Failed to share post. Please try again.');
+            setAlert({ 
+                message: error.response?.data?.message || 'Failed to share post. Please try again.', 
+                type: 'error' 
+            });
         } finally {
             setLoading(false);
         }
@@ -246,6 +251,14 @@ const CreatePost = ({ onBack, onPost }) => {
                         setIsCropping(false);
                         setTempImage(null);
                     }}
+                />
+            )}
+
+            {alert && (
+                <CustomAlert 
+                    message={alert.message} 
+                    type={alert.type} 
+                    onClose={() => setAlert(null)} 
                 />
             )}
         </div>

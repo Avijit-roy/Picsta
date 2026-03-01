@@ -1,4 +1,5 @@
 import React from 'react';
+import ListSkeleton from '../MainpageComponents/SideBar/ListSkeleton';
 
 const ConversationSidebar = ({ 
     search, 
@@ -110,7 +111,7 @@ const ConversationSidebar = ({
             `}</style>
             <div style={{ overflowY: 'auto', flex: 1, scrollbarWidth: 'thin', scrollbarColor: '#333 transparent' }}>
                 {loading ? (
-                    <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>Loading...</div>
+                    <ListSkeleton />
                 ) : conversations.length === 0 ? (
                     <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>No messages yet</div>
                 ) : conversations.map(conv => {

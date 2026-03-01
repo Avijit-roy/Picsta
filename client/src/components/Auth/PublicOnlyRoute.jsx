@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthUtils';
 
 /**
  * Wraps routes that should only be accessible when NOT logged in.

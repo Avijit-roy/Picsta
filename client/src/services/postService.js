@@ -158,6 +158,34 @@ const postService = {
       console.error('Get saved posts error:', error);
       throw error;
     }
+  },
+  /**
+   * Get all video posts (Reels)
+   */
+  getReels: async () => {
+    try {
+      const response = await api.get('/posts/reels');
+      return response.data;
+    } catch (error) {
+      console.error('Get reels error:', error);
+      throw error;
+    }
+  },
+  /**
+   * Get users who liked a post
+   * @param {string} postId
+   */
+  getLikers: async (postId) => {
+    const response = await api.get(`/posts/${postId}/likers`);
+    return response.data;
+  },
+  /**
+   * Notify other components about a post update
+   * @param {string} postId
+   * @param {object} data
+   */
+  notifyPostUpdate: (postId, data) => {
+    window.dispatchEvent(new CustomEvent('POST_UPDATED', { detail: { postId, ...data } }));
   }
 };
 

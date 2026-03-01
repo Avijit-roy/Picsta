@@ -29,12 +29,16 @@ exports.sendMessage = async (req, res) => {
     }
 
     const resolvedType = type || (mediaUrl ? 'image' : 'text');
+    let messageContent = content || '';
+    if (resolvedType === 'post' && !messageContent) {
+      messageContent = 'Check out this post..';
+    }
 
     const newMessage = new Message({
       sender: req.user.id,
       receiver: receiverId,
       chat: chatId,
-      content: content || '',
+      content: messageContent,
       type: resolvedType,
       post: postId,
       mediaUrl: mediaUrl || ''

@@ -62,17 +62,20 @@ router.post('/toggle-follow/:id', userController.toggleFollow);
 router.get('/recent-searches', userController.getRecentSearches);
 
 /**
+ * @route   DELETE /api/users/recent-searches
+ * @desc    Clear all recent searches
+ * @access  Private
+ * NOTE: This must come BEFORE recent-searches/:userId to avoid route conflicts
+ */
+router.delete('/recent-searches', userController.clearAllRecentSearches);
+
+/**
  * @route   DELETE /api/users/recent-searches/:userId
  * @desc    Remove an item from recent searches
  * @access  Private
  */
 router.delete('/recent-searches/:userId', userController.removeRecentSearch);
 
-/**
- * @route   DELETE /api/users/recent-searches
- * @desc    Clear all recent searches
- * @access  Private
- */
 /**
  * @route   GET /api/users/:id/followers
  * @desc    Get user followers

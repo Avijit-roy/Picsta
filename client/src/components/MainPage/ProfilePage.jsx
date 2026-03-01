@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from '../../context/AuthUtils';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import EditProfileModal from "./MainpageComponents/ProfileSection/EditProfileModal";
 import userService from "../../services/userService";
 import chatService from "../../services/chatService";
-import PostItem from "./MainpageComponents/PostFeed/PostItem";
+
 import postService from "../../services/postService";
 import CustomAlert from "./MainpageComponents/PostFeed/CustomAlert";
 
@@ -13,6 +14,7 @@ import ProfileInfo from "./profilepage/ProfileInfo";
 import ProfileTabs from "./profilepage/ProfileTabs";
 import ProfilePostGrid from "./profilepage/ProfilePostGrid";
 import FollowListModal from "./profilepage/FollowListModal";
+import ProfilePostFeedModal from "./profilepage/ProfilePostFeedModal";
 
 /**
  * ProfilePage Component
@@ -31,6 +33,7 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
 
 
   const { user, setUser } = useAuth();
+
   const [tab, setTab] = useState("posts");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [userPosts, setUserPosts] = useState([]);
@@ -45,8 +48,9 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
     users: [],
     loading: false
   });
-  const [selectedPost, setSelectedPost] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(null);
   const [alert, setAlert] = useState(null);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
 
   const isOwnProfile = useMemo(() => {
     if (!viewingUsername) return true;
@@ -64,8 +68,22 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
     isFollowing: false
   });
 
+  // Dynamic Title for Profile
+  const profileTitle = useMemo(() => {
+    const name = userData?.username || viewingUsername || 'User';
+    const cleanName = name.startsWith('@') ? name : `@${name}`;
+    return `${cleanName} | Profile`;
+  }, [userData?.username, viewingUsername]);
+
+  usePageTitle(profileTitle, true);
+
   useEffect(() => {
     const fetchProfile = async () => {
+      // Reset all post/modal state when navigating to a profile
+      setSelectedIndex(null);
+      setUserPosts([]);
+      setSavedPosts([]);
+
       try {
         let result;
 
@@ -119,6 +137,37 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
   }, [viewingUsername, isOwnProfile]);
 
   useEffect(() => {
+    const handleUserFollowUpdate = (e) => {
+      const { userId, isFollowing } = e.detail;
+      
+      // Update userData if this represents the current profile being viewed
+      if (userData?.id === userId) {
+        setUserData(prev => ({
+          ...prev, 
+          isFollowing,
+          followersCount: isFollowing 
+            ? (prev.followersCount + 1) 
+            : Math.max(0, prev.followersCount - 1)
+        }));
+      }
+
+      // Also update any posts in userPosts or savedPosts that belong to this user
+      const updatePosts = (posts) => posts.map(p => {
+        if (p.author?._id === userId || p.author === userId) {
+          return { ...p, isFollowing };
+        }
+        return p;
+      });
+
+      setUserPosts(updatePosts);
+      setSavedPosts(updatePosts);
+    };
+
+    window.addEventListener('USER_FOLLOW_UPDATED', handleUserFollowUpdate);
+    return () => window.removeEventListener('USER_FOLLOW_UPDATED', handleUserFollowUpdate);
+  }, [userData?.id, selectedIndex]);
+
+  useEffect(() => {
     if (tab === "saved" && isOwnProfile) {
       const fetchSavedPosts = async () => {
         try {
@@ -167,6 +216,8 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
   };
 
   const handleFollowToggle = async () => {
+    if (isFollowLoading) return;
+    setIsFollowLoading(true);
     try {
       const result = await userService.toggleFollow(userData.id);
       if (result.success) {
@@ -175,10 +226,15 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
           isFollowing: result.isFollowing,
           followersCount: result.followersCount
         }));
+
+        // Notify other components
+        userService.notifyUserFollowUpdate(userData.id, result.isFollowing);
       }
     } catch (error) {
       console.error("Toggle follow error:", error);
       setAlert({ message: "Failed to update follow status. Please try again.", type: "error" });
+    } finally {
+      setIsFollowLoading(false);
     }
   };
 
@@ -262,7 +318,7 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
           onDeletePost(postId);
         }
 
-        setSelectedPost(null);
+        setSelectedIndex(null);
         setAlert({ message: "Post deleted successfully", type: "success" });
       }
     } catch (error) {
@@ -286,8 +342,6 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
     if (onUpdatePost) {
       onUpdatePost(updatedPost);
     }
-    
-    setSelectedPost(updatedPost);
   };
 
   return (
@@ -339,6 +393,7 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
         <ProfileInfo 
           userData={userData}
           isOwnProfile={isOwnProfile}
+          isFollowLoading={isFollowLoading}
           onEditClick={() => setIsEditModalOpen(true)}
           onFollowToggle={handleFollowToggle}
           onMessageClick={handleMessageClick}
@@ -355,7 +410,10 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
         <ProfilePostGrid 
           loadingPosts={loadingPosts} 
           displayPosts={displayPosts} 
-          onPostClick={setSelectedPost}
+          onPostClick={(post) => {
+            const idx = displayPosts.findIndex(p => p._id === post._id);
+            setSelectedIndex(idx >= 0 ? idx : 0);
+          }}
           tab={tab}
         />
       </div>
@@ -363,9 +421,10 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
       {/* Modals */}
       {isEditModalOpen && (
         <EditProfileModal 
-          user={user} 
+          isOpen={isEditModalOpen}
+          userData={userData} 
           onClose={() => setIsEditModalOpen(false)} 
-          onUpdate={handleProfileUpdate}
+          onSave={handleProfileUpdate}
         />
       )}
 
@@ -379,58 +438,34 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
         onUserClick={handleUserClickFromList}
       />
 
-      {selectedPost && (
-        <div 
-          style={{
-            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 2000,
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto',
-            padding: window.innerWidth < 768 ? '0' : '40px 0', backdropFilter: 'blur(5px)'
-          }}
-          onClick={() => setSelectedPost(null)}
-        >
-          <div 
-            style={{ 
-              width: '100%', maxWidth: '470px', padding: window.innerWidth < 768 ? '0' : '0 10px',
-              marginTop: window.innerWidth < 768 ? '0' : '20px'
-            }} 
-            onClick={e => e.stopPropagation()}
-          >
-            <PostItem 
-              post={selectedPost}
-              isDetail={true}
-              user={user}
-              onDelete={handleDeletePost}
-              onUpdate={handleUpdatePost}
-              onClose={() => setSelectedPost(null)}
-              onUserClick={() => setSelectedPost(null)}
-              onLikeToggle={async (postId) => {
-                try {
-                  const result = await postService.toggleLike(postId);
-                  if (result.success) {
-                    const updateList = (list) => list.map(p => 
-                      p._id === postId ? { ...p, isLiked: result.isLiked, likesCount: result.likesCount } : p
-                    );
-                    setUserPosts(updateList);
-                    setSavedPosts(updateList);
-                    
-                    // Notify MainPage
-                    if (onUpdatePost) {
-                      const postToUpdate = userPosts.find(p => p._id === postId) || savedPosts.find(p => p._id === postId);
-                      if (postToUpdate) {
-                        onUpdatePost({ ...postToUpdate, isLiked: result.isLiked, likesCount: result.likesCount });
-                      }
-                    }
-
-                    setSelectedPost(prev => prev?._id === postId ? { ...prev, isLiked: result.isLiked, likesCount: result.likesCount } : prev);
-                  }
-                } catch (error) {
-                  console.error("Like error:", error);
+      {selectedIndex !== null && displayPosts.length > 0 && (
+        <ProfilePostFeedModal
+          posts={displayPosts}
+          startIndex={selectedIndex}
+          user={user}
+          onClose={() => setSelectedIndex(null)}
+          onDelete={handleDeletePost}
+          onUpdate={handleUpdatePost}
+          onUserClick={(username) => { setSelectedIndex(null); if (onUserClick) onUserClick(username); }}
+          onLikeToggle={async (postId) => {
+            try {
+              const result = await postService.toggleLike(postId);
+              if (result.success) {
+                const updateList = (list) => list.map(p =>
+                  p._id === postId ? { ...p, isLiked: result.isLiked, likesCount: result.likesCount } : p
+                );
+                setUserPosts(updateList);
+                setSavedPosts(updateList);
+                if (onUpdatePost) {
+                  const postToUpdate = displayPosts.find(p => p._id === postId);
+                  if (postToUpdate) onUpdatePost({ ...postToUpdate, isLiked: result.isLiked, likesCount: result.likesCount });
                 }
-              }}
-              onPostClick={() => {}} 
-            />
-          </div>
-        </div>
+              }
+            } catch (error) {
+              console.error("Like error:", error);
+            }
+          }}
+        />
       )}
 
       {alert && (

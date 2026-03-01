@@ -69,7 +69,8 @@ const SharedPost = ({ post, onPostClick }) => {
 
     const authorAvatar = post.author?.profilePicture || "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg";
     const authorUsername = post.author?.username || 'User';
-    const postImage = post.image || (post.media && post.media[0]?.url);
+    const firstMedia = post.media && post.media[0];
+    const postImage = post.image || (firstMedia?.type === 'video' ? firstMedia?.thumbnailUrl : firstMedia?.url);
 
     return (
         <div 
