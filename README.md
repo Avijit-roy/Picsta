@@ -463,7 +463,7 @@ docs(readme): add environment variable table
 
 ## License
 
-This project is licensed under the **ISC License**.  
+This project is licensed under the **MIT License**.  
 See the [LICENSE](./LICENSE) file for details.
 
 ---
@@ -472,8 +472,8 @@ See the [LICENSE](./LICENSE) file for details.
 
 **Avijit Roy**
 
-- 📧 Email: [avijitroy@example.com](mailto:avijitroy@example.com)
-- 🐙 GitHub: [@avijitroy](https://github.com/avijitroy)
+- 📧 Email: [avijitroy@example.com](mailto:aj5298626@gmail.com)
+- 🐙 GitHub: [@avijitroy](https://github.com/Avijit-roy)
 
 ---
 
