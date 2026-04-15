@@ -78,7 +78,7 @@ const handleSocialLogin = async (idField, profile, done) => {
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID || 'dummy_id',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy_secret',
-    callbackURL: "/api/auth/google/callback",
+    callbackURL: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/auth/google/callback`,
     proxy: true
   },
   (accessToken, refreshToken, profile, done) => handleSocialLogin('googleId', profile, done)
@@ -87,7 +87,7 @@ passport.use(new GoogleStrategy({
 passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_ID || 'dummy_id',
     clientSecret: process.env.FACEBOOK_APP_SECRET || 'dummy_secret',
-    callbackURL: "/api/auth/facebook/callback",
+    callbackURL: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/auth/facebook/callback`,
     profileFields: ['id', 'displayName', 'emails', 'name'],
     proxy: true
   },

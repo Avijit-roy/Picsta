@@ -3,6 +3,12 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const { authenticate } = require('../middleware/authMiddleware');
 const { upload } = require('../middleware/uploadMiddleware');
+const {
+  followLimiter,
+  searchLimiter,
+  profileUpdateLimiter,
+  profilePictureLimiter,
+} = require('../middleware/rateLimiter');
 
 // All routes here are protected
 router.use(authenticate);
@@ -18,21 +24,23 @@ router.get('/profile', userController.getProfile);
  * @route   PUT /api/users/profile
  * @desc    Update user profile data
  * @access  Private
+ * @limit   10 req / 15 min
  */
-router.put('/profile', userController.updateProfile);
+router.put('/profile', profileUpdateLimiter, userController.updateProfile);
 
 /**
  * @route   POST /api/users/profile/profilePicture
  * @desc    Upload user profile picture
  * @access  Private
+ * @limit   5 req / hour
  */
-router.post('/profile/profilePicture', upload.single('profilePicture'), userController.uploadProfilePicture);
+router.post(
+  '/profile/profilePicture',
+  profilePictureLimiter,
+  upload.single('profilePicture'),
+  userController.uploadProfilePicture
+);
 
-/**
- * @route   GET /api/users/check-username/:username
- * @desc    Check username availability
- * @access  Private
- */
 /**
  * @route   GET /api/users/u/:username
  * @desc    Get user profile by username
@@ -44,15 +52,17 @@ router.get('/u/:username', userController.getUserProfileByUsername);
  * @route   GET /api/users/search/:query
  * @desc    Search users by username
  * @access  Private
+ * @limit   30 req / min
  */
-router.get('/search/:query', userController.searchUsers);
+router.get('/search/:query', searchLimiter, userController.searchUsers);
 
 /**
  * @route   POST /api/users/toggle-follow/:id
  * @desc    Toggle follow/unfollow a user
  * @access  Private
+ * @limit   30 req / min
  */
-router.post('/toggle-follow/:id', userController.toggleFollow);
+router.post('/toggle-follow/:id', followLimiter, userController.toggleFollow);
 
 /**
  * @route   GET /api/users/recent-searches

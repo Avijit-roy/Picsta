@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  // In dev: VITE_API_URL = http://localhost:5000/api (from .env)
+  // In production (single-server): falls back to relative /api
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true, // Send HttpOnly cookies on every request
 });
 
