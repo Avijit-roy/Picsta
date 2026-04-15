@@ -22,6 +22,8 @@
 - Real-time messaging and notifications via Socket.IO
 - Google and Facebook OAuth out of the box
 - Centralized media handling via Cloudinary
+- **Production-ready**: Gzip compression, edge caching, and PM2 process management
+- **Security-first**: Multi-layer rate limiting and NoSQL injection protection
 
 ---
 
@@ -124,6 +126,9 @@ picsta/
     ├── utils/                      # Server utility functions
     │   ├── generateToken.js        # JWT access + refresh token generators
     │   └── sendEmail.js            # Nodemailer email sender
+    ├── public/                     # (Production) Built frontend files served by Express
+    ├── logs/                       # (Production) Server logs
+    ├── ecosystem.config.js         # PM2 production process configuration
     └── uploads/                    # Temporary local upload storage
 ```
 
@@ -168,8 +173,6 @@ cp .env.example .env
 # Then edit .env with your actual credentials
 ```
 
-Start the backend development server:
-
 ```bash
 node server.js
 # Or with auto-reload:
@@ -178,17 +181,29 @@ npx nodemon server.js
 
 The server will run at: `http://localhost:5000`
 
-### 3. Set up the Frontend
+### 3. Production Deployment (Single Server)
 
-Open a new terminal:
+Picsta is designed to be served from a single Node.js instance in production.
 
-```bash
-cd client
-npm install
-npm run dev
-```
+1. **Build the Client**:
+   ```bash
+   cd client
+   npm install
+   npm run build
+   ```
+   *This bundles the React app into `server/public/`.*
 
-The client will run at: `http://localhost:5173`
+2. **Start the Production Server**:
+   ```bash
+   cd server
+   NODE_ENV=production npm start
+   ```
+
+3. **Using PM2 (Recommended)**:
+   ```bash
+   cd server
+   pm2 start ecosystem.config.js --env production
+   ```
 
 ---
 
@@ -206,7 +221,8 @@ The client will run at: `http://localhost:5173`
 | `EMAIL_USER`            | SMTP sender email address             | ✅       | `yourapp@gmail.com`                              |
 | `EMAIL_PASSWORD`        | SMTP App Password (Gmail)             | ✅       | `xxxx xxxx xxxx xxxx`                            |
 | `FRONTEND_URL`          | Client origin for CORS and redirects  | ✅       | `http://localhost:5173`                          |
-| `NODE_ENV`              | Runtime environment                   | ✅       | `development`                                    |
+| `BACKEND_URL`           | Server origin (used for OAuth)        | ✅       | `http://localhost:5000`                          |
+| `NODE_ENV`              | Runtime environment                   | ✅       | `production` or `development`                    |
 | `GOOGLE_CLIENT_ID`      | Google OAuth 2.0 Client ID            | ✅       | `*.apps.googleusercontent.com`                   |
 | `GOOGLE_CLIENT_SECRET`  | Google OAuth 2.0 Client Secret        | ✅       | `GOCSPX-***`                                     |
 | `FACEBOOK_APP_ID`       | Facebook Developer App ID             | ✅       | `123456789`                                      |
@@ -222,9 +238,15 @@ The client will run at: `http://localhost:5173`
 > node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 > ```
 
-### Client — No `.env` needed
+### Client — `client/.env` (Optional)
 
-The client communicates with the server via the configured Axios base URL (`http://localhost:5000/api`). This is set in `client/src/services/api.js`.
+In development, the client uses a proxy. In production, it uses relative URLs. If you need to override the API endpoint manually, you can use:
+
+| Variable        | Description                  | Example                  |
+| --------------- | ---------------------------- | ------------------------ |
+| `VITE_API_URL`  | Custom API backend base URL  | `http://api.yoursite.com` |
+
+Otherwise, it defaults to the same-origin `/api` in production.
 
 ---
 
