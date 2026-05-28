@@ -11,7 +11,7 @@ exports.getNotifications = async (req, res, next) => {
       recipient: req.user.id,
       isDeleted: false 
     })
-      .populate('sender', 'username profilePicture name')
+      .populate('sender', 'username profilePicture name email')
       .populate({
         path: 'post',
         select: 'media caption likes commentsCount author createdAt isEdited',
@@ -23,6 +23,12 @@ exports.getNotifications = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
+
+    notifications.forEach(n => {
+      if (n.sender && n.sender.email) {
+        n.sender.isSpecial = n.sender.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com');
+      }
+    });
 
     res.status(200).json({
       success: true,

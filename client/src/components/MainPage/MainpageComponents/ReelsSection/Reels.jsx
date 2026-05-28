@@ -584,7 +584,9 @@ export default function ReelsViewer({ onClose, onUserClick }) {
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
                    <img 
                       src={reel.author.profilePicture || "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg"} 
-                      alt="" style={{ width: "36px", height: "36px", borderRadius: "50%", border: "1.5px solid white", objectFit: "cover" }} 
+                      alt="" 
+                      className={reel.author?.isSpecial ? 'special-user-avatar' : ''}
+                      style={{ width: "36px", height: "36px", borderRadius: "50%", border: "1.5px solid white", objectFit: "cover" }} 
                    />
                    <span style={{ color: "white", fontWeight: "600", fontSize: "14px", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
                      {reel.author.username}

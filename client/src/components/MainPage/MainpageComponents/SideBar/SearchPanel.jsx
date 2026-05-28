@@ -21,7 +21,8 @@ const UserListItem = memo(({ item, isRecent, onClick, onRemove }) => (
         <img
             src={item.avatar || item.profilePicture || defaultAvatar}
             alt={item.name}
-            style={styles.avatar}
+            className={item.isSpecial ? 'special-user-avatar' : ''}
+            style={{ ...styles.avatar, border: item.isSpecial ? 'none' : 'none' }}
         />
 
         <div style={styles.textContainer}>

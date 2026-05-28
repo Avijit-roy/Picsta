@@ -94,7 +94,7 @@ const SharedPost = ({ post, onPostClick }) => {
             {/* Header */}
             <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #262626' }}>
                 <img 
-                    src={authorAvatar.startsWith('http') ? authorAvatar : `http://localhost:5000${authorAvatar}`} 
+                    src={authorAvatar.startsWith('http') ? authorAvatar : `${import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000')}${authorAvatar}`} 
                     alt={authorUsername} 
                     style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }}
                 />
@@ -104,7 +104,7 @@ const SharedPost = ({ post, onPostClick }) => {
             {/* Image */}
             <div style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#000', position: 'relative' }}>
                 <ChatImage 
-                    src={postImage?.startsWith('http') ? postImage : `http://localhost:5000${postImage}`} 
+                    src={postImage?.startsWith('http') ? postImage : `${import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000')}${postImage}`} 
                     alt="Post" 
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
@@ -125,7 +125,7 @@ const ChatImage = ({ src, alt, style, isUploading, isFailed, onImageClick }) => 
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState(false);
 
-    const isInvalid = !src || src.includes('undefined') || src === 'http://localhost:5000' || src.endsWith('null');
+    const isInvalid = !src || src.includes('undefined') || src === (import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000')) || src.endsWith('null');
 
     // 5. Optimization: Apply Cloudinary transformations
     let displayImageUrl = src;
@@ -351,8 +351,9 @@ const ChatPanel = ({
                 </button>
 
                 <img
-                    src={otherParticipant?.profilePicture?.startsWith('http') ? otherParticipant.profilePicture : `http://localhost:5000${otherParticipant?.profilePicture || 'https://i.pravatar.cc/150?img=33'}`}
+                    src={otherParticipant?.profilePicture?.startsWith('http') ? otherParticipant.profilePicture : `${import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000')}${otherParticipant?.profilePicture || 'https://i.pravatar.cc/150?img=33'}`}
                     alt={otherParticipant?.name || 'User'}
+                    className={otherParticipant?.isSpecial ? 'special-user-avatar' : ''}
                     style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer' }}
                     onClick={() => otherParticipant && onUserClick?.(otherParticipant.username)}
                 />
@@ -385,8 +386,9 @@ const ChatPanel = ({
                 ) : messages.length === 0 ? (
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '15px' }}>
                          <img
-                            src={otherParticipant?.profilePicture?.startsWith('http') ? otherParticipant.profilePicture : `http://localhost:5000${otherParticipant?.profilePicture || 'https://i.pravatar.cc/150?img=33'}`}
+                            src={otherParticipant?.profilePicture?.startsWith('http') ? otherParticipant.profilePicture : `${import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000')}${otherParticipant?.profilePicture || 'https://i.pravatar.cc/150?img=33'}`}
                             alt={otherParticipant?.name || 'User'}
+                            className={otherParticipant?.isSpecial ? 'special-user-avatar' : ''}
                             style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer' }}
                             onClick={() => otherParticipant && onUserClick?.(otherParticipant.username)}
                         />

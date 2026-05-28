@@ -18,7 +18,7 @@ exports.createOrGetChat = async (req, res) => {
     let chat = await Chat.findOne({
       isGroup: false,
       participants: { $all: [req.user.id, userId] }
-    }).populate('participants', 'name username profilePicture isVerified');
+    }).populate('participants', 'name username profilePicture isVerified email');
 
     if (chat) {
       return res.status(200).json({ success: true, data: chat });
@@ -32,7 +32,7 @@ exports.createOrGetChat = async (req, res) => {
 
     await newChat.save();
     
-    chat = await Chat.findById(newChat._id).populate('participants', 'name username profilePicture isVerified');
+    chat = await Chat.findById(newChat._id).populate('participants', 'name username profilePicture isVerified email');
 
     res.status(201).json({ success: true, data: chat });
   } catch (error) {
@@ -52,7 +52,7 @@ exports.getUserChats = async (req, res) => {
       participants: { $in: [req.user.id] },
       hiddenBy: { $ne: req.user.id }
     })
-      .populate('participants', 'name username profilePicture isVerified')
+      .populate('participants', 'name username profilePicture isVerified email')
       .populate('lastMessage')
       .sort({ updatedAt: -1 });
 

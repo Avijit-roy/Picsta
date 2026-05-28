@@ -232,8 +232,9 @@ const ShareModal = ({ isOpen, onClose, post, currentUser }) => {
                                     transition: 'border 0.2s'
                                 }}>
                                     <img 
-                                        src={avatar.startsWith('http') ? avatar : `http://localhost:5000${avatar}`} 
+                                        src={avatar.startsWith('http') ? avatar : `${import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000')}${avatar}`} 
                                         alt={name}
+                                        className={!chat.isGroup && otherParticipant?.isSpecial ? 'special-user-avatar' : ''}
                                         style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                                     />
                                 </div>

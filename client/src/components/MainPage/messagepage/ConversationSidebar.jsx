@@ -143,8 +143,9 @@ const ConversationSidebar = ({
                             {/* Avatar */}
                             <div style={{ position: 'relative', flexShrink: 0 }}>
                                 <img
-                                    src={avatar.startsWith('http') ? avatar : `http://localhost:5000${avatar}`}
+                                    src={avatar.startsWith('http') ? avatar : `${import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000')}${avatar}`}
                                     alt={name}
+                                    className={!conv.isGroup && otherParticipant?.isSpecial ? 'special-user-avatar' : ''}
                                     style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', display: 'block' }}
                                 />
                                 {isUnread && (

@@ -205,6 +205,7 @@ const FollowListModal = ({ isOpen, onClose, activeTab, onTabChange, users, loadi
                   <img 
                     src={user.profilePicture || "https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg"} 
                     alt={user.username}
+                    className={user.isSpecial ? 'special-user-avatar' : ''}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 </div>

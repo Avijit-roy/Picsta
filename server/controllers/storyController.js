@@ -15,7 +15,7 @@ exports.getActiveStories = async (req, res, next) => {
     
     // Find all active stories
     const stories = await Story.find({ createdAt: { $gt: activeTime } })
-      .populate('user', 'name username profilePicture')
+      .populate('user', 'name username profilePicture email')
       .sort({ createdAt: 1 });
 
     // Group stories by user

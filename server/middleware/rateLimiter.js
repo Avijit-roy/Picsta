@@ -19,12 +19,32 @@ const createLimiter = (windowMs, max, message, opts = {}) =>
 
 /**
  * General auth limiter – login / register
- * 10 attempts per 15 minutes
+ * 30 attempts per 15 minutes
  */
 const authLimiter = createLimiter(
   parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 10,
+  parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 30,
   'Too many attempts. Please try again later.'
+);
+
+/**
+ * Social Auth limiter – Google / Facebook
+ * 20 attempts per 15 minutes (higher to accommodate redirects)
+ */
+const socialAuthLimiter = createLimiter(
+  15 * 60 * 1000,
+  20,
+  'Too many login attempts. Please try again later.'
+);
+
+/**
+ * Refresh token limiter
+ * 100 attempts per 15 minutes (background process)
+ */
+const refreshLimiter = createLimiter(
+  15 * 60 * 1000,
+  100,
+  'Too many session refresh attempts. Please log in again.'
 );
 
 /**
@@ -198,6 +218,8 @@ const globalApiLimiter = createLimiter(
 module.exports = {
   // Auth
   authLimiter,
+  socialAuthLimiter,
+  refreshLimiter,
   strictAuthLimiter,
   emailLimiter,
   changePasswordLimiter,

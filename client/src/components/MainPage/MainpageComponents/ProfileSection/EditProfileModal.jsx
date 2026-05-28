@@ -334,6 +334,7 @@ export default function EditProfileModal({ isOpen, onClose, userData, onSave }) 
                 <img 
                   src={previewUrl} 
                   alt="preview" 
+                  className={userData?.isSpecial ? 'special-user-avatar' : ''}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
               </div>

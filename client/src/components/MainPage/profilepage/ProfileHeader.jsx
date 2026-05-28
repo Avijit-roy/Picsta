@@ -24,13 +24,14 @@ const ProfileHeader = ({ userData, onFollowersClick, onFollowingClick }) => {
         height: '80px',
         borderRadius: '50%',
         overflow: 'hidden',
-        flexShrink: 0
+        flexShrink: 0,
+        border: userData.isSpecial ? 'none' : 'none'
       }}>
         <img
-          className="avatar-img"
+          className={`avatar-img ${userData.isSpecial ? 'special-user-avatar' : ''}`}
           src={userData.profilePicture || "https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg"}
           alt="profile"
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
         />
       </div>
       

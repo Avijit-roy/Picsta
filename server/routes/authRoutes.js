@@ -4,6 +4,8 @@ const authController = require('../controllers/authController');
 const { authenticate } = require('../middleware/authMiddleware');
 const {
   authLimiter,
+  socialAuthLimiter,
+  refreshLimiter,
   strictAuthLimiter,
   emailLimiter,
   changePasswordLimiter
@@ -17,7 +19,7 @@ const {
  * @route   POST /api/auth/register
  * @desc    Register new user
  * @access  Public
- * @limit   10 req / 15 min
+ * @limit   30 req / 15 min
  */
 router.post('/register', authLimiter, authController.register);
 
@@ -41,7 +43,7 @@ router.post('/resend-verification', emailLimiter, authController.resendVerificat
  * @route   POST /api/auth/login
  * @desc    Login user
  * @access  Public
- * @limit   10 req / 15 min
+ * @limit   30 req / 15 min
  */
 router.post('/login', authLimiter, authController.login);
 
@@ -60,19 +62,19 @@ router.post('/logout', authController.logout);
  * @route   GET /api/auth/google
  * @desc    Initiate Google OAuth flow
  * @access  Public
- * @limit   10 req / 15 min
+ * @limit   20 req / 15 min
  */
 const passport = require('passport');
-router.get('/google', authLimiter, passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google', socialAuthLimiter, passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 /**
  * @route   GET /api/auth/google/callback
  * @desc    Google OAuth callback
  * @access  Public
- * @limit   10 req / 15 min
+ * @limit   20 req / 15 min
  */
 router.get('/google/callback',
-    authLimiter,
+    socialAuthLimiter,
     passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=oauth_failed` }),
     authController.googleCallback
 );
@@ -81,18 +83,18 @@ router.get('/google/callback',
  * @route   GET /api/auth/facebook
  * @desc    Initiate Facebook OAuth flow
  * @access  Public
- * @limit   10 req / 15 min
+ * @limit   20 req / 15 min
  */
-router.get('/facebook', authLimiter, passport.authenticate('facebook', { scope: ['email'] }));
+router.get('/facebook', socialAuthLimiter, passport.authenticate('facebook', { scope: ['email'] }));
 
 /**
  * @route   GET /api/auth/facebook/callback
  * @desc    Facebook OAuth callback
  * @access  Public
- * @limit   10 req / 15 min
+ * @limit   20 req / 15 min
  */
 router.get('/facebook/callback',
-    authLimiter,
+    socialAuthLimiter,
     passport.authenticate('facebook', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=oauth_failed` }),
     authController.googleCallback
 );
@@ -101,9 +103,9 @@ router.get('/facebook/callback',
  * @route   POST /api/auth/refresh
  * @desc    Refresh access token
  * @access  Public
- * @limit   10 req / 15 min
+ * @limit   100 req / 15 min
  */
-router.post('/refresh', authLimiter, authController.refreshToken);
+router.post('/refresh', refreshLimiter, authController.refreshToken);
 
 // ===========================
 // PASSWORD RESET ROUTES

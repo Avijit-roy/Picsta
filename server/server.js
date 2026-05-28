@@ -24,6 +24,10 @@ const { globalApiLimiter } = require('./middleware/rateLimiter');
 const app = express();
 const server = http.createServer(app);
 
+const isProduction = process.env.NODE_ENV === 'production';
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+
 // Enable trust proxy for production environments (e.g. Nginx, Cloudflare)
 app.set('trust proxy', 1);
 
@@ -31,7 +35,7 @@ app.set('trust proxy', 1);
 app.use(compression());
 
 // Logging middleware
-if (process.env.NODE_ENV === 'production') {
+if (isProduction) {
   app.use(morgan('combined'));
 } else {
   app.use(morgan('dev'));
@@ -40,7 +44,7 @@ if (process.env.NODE_ENV === 'production') {
 // Initialize Socket.io
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: [frontendUrl, backendUrl],
     credentials: true
   }
 });
@@ -85,8 +89,8 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "http://localhost:5000", "https://i.pravatar.cc", "https://static.vecteezy.com", "https://images.unsplash.com"],
-      connectSrc: ["'self'", "ws://localhost:5173", "http://localhost:5000"],
+      imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://i.pravatar.cc", "https://static.vecteezy.com", "https://images.unsplash.com"],
+      connectSrc: ["'self'", "ws://localhost:5173", frontendUrl, backendUrl, "wss://*", "https://*"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'", "https://res.cloudinary.com"],
@@ -99,9 +103,9 @@ app.use(helmet({
 
 // CORS: In production the client is served from same origin — no CORS needed.
 // In development, allow the Vite dev server origin.
-if (process.env.NODE_ENV !== 'production') {
+if (!isProduction) {
   app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: frontendUrl,
     credentials: true
   }));
 }

@@ -49,7 +49,7 @@ const MobileBottomNavigation = ({ onProfileClick, onHomeClick, onSearchClick, on
                         height: '26px',
                         borderRadius: '50%',
                         overflow: 'hidden',
-                        border: '1.5px solid white',
+                        border: user?.isSpecial ? 'none' : '1.5px solid white',
                         boxSizing: 'border-box',
                         display: 'flex',
                         alignItems: 'center',
@@ -59,7 +59,8 @@ const MobileBottomNavigation = ({ onProfileClick, onHomeClick, onSearchClick, on
                         <img 
                             src={user?.profilePicture || "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg"} 
                             alt="Profile" 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                            className={user?.isSpecial ? 'special-user-avatar' : ''}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: '50%' }} 
                             onError={(e) => { e.target.src = "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg"; }}
                         />
                     </div>

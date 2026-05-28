@@ -61,7 +61,8 @@ exports.updateProfile = async (req, res, next) => {
         gender: user.gender,
         postsCount: user.postsCount,
         followersCount: user.followers.length,
-        followingCount: user.following.length
+        followingCount: user.following.length,
+        isSpecial: user.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com')
       }
     });
   } catch (error) {
@@ -161,7 +162,8 @@ exports.getProfile = async (req, res) => {
         postsCount: user.postsCount || 0,
         followersCount: user.followers?.length || 0,
         followingCount: user.following?.length || 0,
-        isFollowing
+        isFollowing,
+        isSpecial: user.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com')
       }
     });
   } catch (error) {
@@ -255,7 +257,8 @@ exports.getUserProfileByUsername = async (req, res) => {
         followersCount: user.followers?.length || 0,
         followingCount: user.following?.length || 0,
         isVerified: user.isVerified || false,
-        isFollowing
+        isFollowing,
+        isSpecial: user.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com')
       }
     });
   } catch (error) {
@@ -341,7 +344,7 @@ exports.searchUsers = async (req, res) => {
       username: { $regex: searchStr, $options: 'i' },
       _id: { $ne: req.user.id } // Exclude self
     })
-    .select('name username profilePicture isVerified followers following')
+    .select('name username profilePicture isVerified followers following email')
     .limit(10);
 
     const formattedUsers = users.map(user => ({
@@ -352,7 +355,8 @@ exports.searchUsers = async (req, res) => {
       isVerified: user.isVerified || false,
       followersCount: user.followers?.length || 0,
       followingCount: user.following?.length || 0,
-      isFollowing: user.followers?.includes(req.user.id) || false
+      isFollowing: user.followers?.includes(req.user.id) || false,
+      isSpecial: user.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com')
     }));
 
     res.status(200).json({
@@ -373,15 +377,24 @@ exports.searchUsers = async (req, res) => {
 exports.getRecentSearches = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
-      .populate('recentSearches', 'name username profilePicture isVerified');
+      .populate('recentSearches', 'name username profilePicture isVerified email');
     
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    const formattedSearches = user.recentSearches.map(u => ({
+        id: u._id,
+        name: u.name,
+        username: u.username,
+        profilePicture: u.profilePicture,
+        isVerified: u.isVerified,
+        isSpecial: u.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com')
+    }));
+
     res.status(200).json({
       success: true,
-      data: user.recentSearches
+      data: formattedSearches
     });
   } catch (error) {
     console.error('Get recent searches error:', error);
@@ -434,15 +447,25 @@ exports.clearAllRecentSearches = async (req, res) => {
 exports.getFollowers = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id)
-      .populate('followers', 'name username profilePicture bio isVerified');
+      .populate('followers', 'name username profilePicture bio isVerified email');
     
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    const formattedFollowers = user.followers.map(u => ({
+        id: u._id,
+        name: u.name,
+        username: u.username,
+        profilePicture: u.profilePicture,
+        bio: u.bio,
+        isVerified: u.isVerified,
+        isSpecial: u.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com')
+    }));
+
     res.status(200).json({
       success: true,
-      data: user.followers
+      data: formattedFollowers
     });
   } catch (error) {
     next(error);
@@ -457,15 +480,25 @@ exports.getFollowers = async (req, res, next) => {
 exports.getFollowing = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id)
-      .populate('following', 'name username profilePicture bio isVerified');
+      .populate('following', 'name username profilePicture bio isVerified email');
     
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    const formattedFollowing = user.following.map(u => ({
+        id: u._id,
+        name: u.name,
+        username: u.username,
+        profilePicture: u.profilePicture,
+        bio: u.bio,
+        isVerified: u.isVerified,
+        isSpecial: u.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com')
+    }));
+
     res.status(200).json({
       success: true,
-      data: user.following
+      data: formattedFollowing
     });
   } catch (error) {
     next(error);

@@ -120,7 +120,14 @@ const userSchema = new mongoose.Schema({
     ref: 'User'
   }]
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Virtual for special user (golden border)
+userSchema.virtual('isSpecial').get(function() {
+  return this.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com');
 });
 
 // REMOVED: Duplicate index definitions that were causing warnings

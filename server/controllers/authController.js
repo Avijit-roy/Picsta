@@ -218,7 +218,8 @@ exports.verifyEmail = async (req, res) => {
           username: user.username,
           email: user.email,
           profilePicture: user.profilePicture,
-          isVerified: true
+          isVerified: user.isVerified,
+          isSpecial: user.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com')
         }
       }
     });
@@ -348,7 +349,8 @@ exports.login = async (req, res) => {
           username: user.username,
           email: user.email,
           profilePicture: user.profilePicture,
-          isVerified: user.isVerified
+          isVerified: user.isVerified,
+          isSpecial: user.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com')
         }
       }
     });
@@ -468,7 +470,7 @@ exports.refreshToken = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Token refreshed successfully',
+      message: 'Login successful',
       data: {
         user: {
           id: user._id,
@@ -476,7 +478,8 @@ exports.refreshToken = async (req, res) => {
           username: user.username,
           email: user.email,
           profilePicture: user.profilePicture,
-          isVerified: user.isVerified
+          isVerified: user.isVerified,
+          isSpecial: user.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com')
         }
       }
     });
@@ -694,6 +697,7 @@ exports.getCurrentUser = async (req, res) => {
           profilePicture: req.user.profilePicture,
           dob: req.user.dob,
           isVerified: req.user.isVerified,
+          isSpecial: req.user.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com'),
           createdAt: req.user.createdAt
         }
       }

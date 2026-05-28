@@ -236,6 +236,7 @@ const NotificationsPanel = ({ onClose, mobile = false, onUserClick, onPostClick 
                                     <img
                                         src={notif.sender.profilePicture || 'https://i.pravatar.cc/150?img=33'}
                                         alt=""
+                                        className={notif.sender.isSpecial ? 'special-user-avatar' : ''}
                                         style={{
                                             width: '44px',
                                             height: '44px',
@@ -263,7 +264,7 @@ const NotificationsPanel = ({ onClose, mobile = false, onUserClick, onPostClick 
                                                 const media = notif.post.media[0];
                                                 const url = media.type === 'video' ? media.thumbnailUrl : media.url;
                                                 if (!url) return '';
-                                                return url.startsWith('http') ? url : `http://localhost:5000${url}`;
+                                                return url.startsWith('http') ? url : `${import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000')}${url}`;
                                             })()}
                                             alt="Post" 
                                             style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: '4px' }}

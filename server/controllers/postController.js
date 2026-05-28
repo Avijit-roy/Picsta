@@ -23,9 +23,13 @@ const formatPost = (post, userId) => {
     likesCount: postObj.likes ? postObj.likes.length : 0
   };
 
-  // Also inject isFollowing into the author object if it's an object populated with followers
+  // Also inject isFollowing and isSpecial into the author object if it's an object
   if (formattedPost.author && typeof formattedPost.author === 'object') {
     formattedPost.author.isFollowing = formattedPost.isFollowing;
+    // Check if isSpecial exists (from virtual) or calculate it
+    if (formattedPost.author.email) {
+      formattedPost.author.isSpecial = formattedPost.author.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com');
+    }
   }
 
   return formattedPost;
@@ -568,7 +572,7 @@ exports.getLikers = async (req, res, next) => {
     const post = await Post.findById(req.params.id)
       .populate({
         path: 'likes',
-        select: 'name username profilePicture followers'
+        select: 'name username profilePicture followers email'
       });
 
     if (!post) {
@@ -583,7 +587,8 @@ exports.getLikers = async (req, res, next) => {
         name: liker.name,
         username: liker.username,
         profilePicture: liker.profilePicture,
-        isFollowing
+        isFollowing,
+        isSpecial: liker.email === (process.env.SPECIAL_MAIL || 'aj5298626@gmail.com')
       };
     });
 

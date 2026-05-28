@@ -105,7 +105,7 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
             profilePicture: profileData.profilePicture 
               ? (profileData.profilePicture.startsWith('http') 
                   ? profileData.profilePicture 
-                  : `http://localhost:5000${profileData.profilePicture}`)
+                  : `${import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000')}${profileData.profilePicture}`)
               : "https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg"
           });
 
@@ -284,7 +284,7 @@ export default function ProfilePage({ viewingUsername, onBack, onMessagesClick, 
         const formattedPic = updatedUser.profilePicture 
           ? (updatedUser.profilePicture.startsWith('http') 
               ? updatedUser.profilePicture 
-              : `http://localhost:5000${updatedUser.profilePicture}`)
+              : `${import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000')}${updatedUser.profilePicture}`)
           : userData.profilePicture;
 
         setUserData({

@@ -363,22 +363,16 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                 <div className="d-flex align-items-center gap-2">
                     <div 
                         style={{
-                            background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
-                            borderRadius: '50%',
-                            padding: '2px',
-                            cursor: 'pointer'
-                        }}
-                        onClick={() => onUserClick?.(authorUsername)}
-                    >
-                        <div style={{
                             width: '32px',
                             height: '32px',
                             borderRadius: '50%',
                             overflow: 'hidden',
-                            border: '2px solid #000',
-                        }}>
-                            <img src={authorAvatar} alt={authorUsername} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        </div>
+                            cursor: 'pointer',
+                            border: post.author?.isSpecial ? 'none' : 'none' // placeholder to keep structure if needed, but class handles it
+                        }}
+                        onClick={() => onUserClick?.(authorUsername)}
+                    >
+                        <img src={authorAvatar} alt={authorUsername} className={post.author?.isSpecial ? 'special-user-avatar' : ''} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                     </div>
                     <div>
                         <div className="d-flex align-items-center gap-1">
@@ -658,6 +652,7 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                                                             <img 
                                                                 src={comment.author?.profilePicture || "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg"} 
                                                                 alt={comment.author?.username} 
+                                                                className={comment.author?.isSpecial ? 'special-user-avatar' : ''}
                                                                 style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
                                                             />
                                                         </div>
@@ -704,6 +699,7 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                                                                                         <img 
                                                                                             src={reply.author?.profilePicture || "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg"} 
                                                                                             alt={reply.author?.username} 
+                                                                                            className={reply.author?.isSpecial ? 'special-user-avatar' : ''}
                                                                                             style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }}
                                                                                         />
                                                                                     </div>
@@ -778,6 +774,7 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                         <img
                             src={currentUser?.profilePicture || "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg"}
                             alt="Your avatar"
+                            className={currentUser?.isSpecial ? 'special-user-avatar' : ''}
                             style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }}
                         />
                         <div style={{ flex: 1 }}>
@@ -818,6 +815,7 @@ const PostItem = ({ post, onPostClick, onUserClick, onLikeToggle, user, isDetail
                         <img
                             src={currentUser?.profilePicture || "https://static.vecteezy.com/system/resources/previews/036/280/650/non_2x/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-illustration-vector.jpg"}
                             alt="Your avatar"
+                            className={currentUser?.isSpecial ? 'special-user-avatar' : ''}
                             style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }}
                         />
                         <span style={{ color: '#737373', fontSize: '14px' }}>Add a comment...</span>

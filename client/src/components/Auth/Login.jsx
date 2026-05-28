@@ -4,6 +4,7 @@ import styles from './Login.module.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Footer from './Footer';
 import backgroundImage from '../../assets/venyamin-koretskiy-zZoFi3ai1zU-unsplash.jpg';
+import floatingImage from '../../assets/chat-bubbles.jpg';
 import authService from '../../services/authService';
 import { useAuth } from '../../context/AuthUtils';
 
@@ -54,7 +55,7 @@ const Login = () => {
                         <div className={styles["floating-card"]}>
                             <div className={styles["card-image"]}>
                                 <img
-                                    src="https://wpspeedmatters.com/wp-content/uploads/2019/12/chat-bubbles.jpg"
+                                    src={floatingImage}
                                     alt="Welcome"
                                 />
                             </div>
@@ -194,7 +195,8 @@ const Login = () => {
                                 type="button" 
                                 className={`${styles["social-button"]} ${styles["google-button"]}`}
                                 onClick={() => {
-                                    window.location.href = 'http://localhost:5000/api/auth/google';
+                                    const baseUrl = import.meta.env.VITE_API_URL || '/api';
+                                    window.location.href = `${baseUrl}/auth/google`;
                                 }}
                             >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -209,7 +211,8 @@ const Login = () => {
                                 type="button" 
                                 className={`${styles["social-button"]} ${styles["facebook-button"]}`}
                                 onClick={() => {
-                                    window.location.href = 'http://localhost:5000/api/auth/facebook';
+                                    const baseUrl = import.meta.env.VITE_API_URL || '/api';
+                                    window.location.href = `${baseUrl}/auth/facebook`;
                                 }}
                             >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
